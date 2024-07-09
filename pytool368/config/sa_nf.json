@@ -1,0 +1,32 @@
+{
+    "a1-host": { 
+        "ip_address": "10.1.1.1",
+        "username": "root",
+        "node": "common"
+    },
+    "a2-host": { 
+        "ip_address": "10.1.1.2",
+        "username": "root",
+        "node": "common"
+    },
+    "b1-host": { 
+        "ip_address": "10.1.1.3",
+        "username": "root",
+        "node": "sm"
+    },
+    "b2-host": { 
+        "ip_address": "10.1.1.4",
+        "username": "root",
+        "node": "sm"
+    },
+    "b3-host": { 
+        "ip_address": "10.1.1.3",
+        "username": "root",
+        "node": "smf"
+    },    
+    "b4-host": { 
+        "ip_address": "10.1.1.3",
+        "username": "root",
+        "node": "smf"
+    }
+}
