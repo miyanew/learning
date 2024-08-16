@@ -1,15 +1,17 @@
-# sm_001_common_show_run_healthcheck.py
-
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
 import argparse
 import json
-import logging
 import os
+import sys
 import traceback
 from datetime import datetime as dt
-from lib.sm_001_common_show_lib1 import function_a
-from lib.logger_config import common_logger
 
-# from common.custom_logger import CustomLogger
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(_current_dir, "./lib"))
+
+from sm_001_common_show_configure_log import build_logger_app, logger_common
+
 # from sm 001 common_show_evaluate_health_csdb import evaluate_health_csdb
 # from sm 001 common_show_evaluate_health_csdbent import evaluate_health_csdbent
 # from sm_001_common_show_evaluate_health_smf import evaluate_health_smf
@@ -18,36 +20,15 @@ from lib.logger_config import common_logger
 # from sm 001_common_show_evaluate_health_upfent import evaluate_health_upfent
 # from sm_001_common_show_execute_healthcheck_command import execute_commands
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_DIR = os.path.join(SCRIPT_DIR, "config")
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#     filename="app.log",
-# )
-
-# logger = logging.getLogger(__name__)
+_config_dir = os.path.join(_current_dir, "config")
 
 
 def main(options):
-    hostnames = options["hostnames"]
-    common_logger.info("This is a normal log from run")
-    common_logger.error("This is an error log from run")
-    function_a()
+    logger_common.info("This is a normal log from run")
+    logger_common.error("This is an error log from run")
 
-    # dt_now = dt.now().strftime("%Y%m%d%H%M00")
     connect_props = select_connect_props(hostnames)
     print(connect_props)
-    # logger.info(connect_props)
-
-    # logger_exec = build_logger(f"{host_name}_{dt_now}")
-    # logger_eval = build_logger(f"{host_name}_{dt_now}_NG")
-    # logger_summ = build_logger(f"{host_name}_{dt_now}_summary")
-
-    # hcs = select_enabled_healthchecks(host_name)
-    # responses = execute_commands(host_name, hcs, logger_exec)
-    # results = evaluate_healthcheck(responses)
 
     # for ret in results:
     #     cmd = [hc["command"] for hc in hcs if hc["id"] == ret["hc_id"]][0]
@@ -58,12 +39,6 @@ def main(options):
 
     #     if ret["is healty"] is False:
     #         logger.info(ret["content"])
-
-
-# def build_logger(logger_name):
-#     log_name = logger_name + ".log"
-#     log_dir = os.path.join(SCRIPT_DIR, "logs", dt.now().strftime("%Y%m%d"))
-#     return CustomLogger(logger_name, log dir=log_dir, log_file=log_name)
 
 
 def select_connect_props(hostnames):
