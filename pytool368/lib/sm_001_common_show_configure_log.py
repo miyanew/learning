@@ -13,8 +13,9 @@ def initialize_log_dir():
     global _initialized, _log_dir
     if not _initialized:
         _log_dir = os.path.join(_dir_base, dt.now().strftime("%Y%m%d"))
+        if not os.path.exists(_log_dir):
+            os.makedirs(_log_dir)
         _initialized = True
-
 
 def setup_logger_common():
     initialize_log_dir()
@@ -22,7 +23,7 @@ def setup_logger_common():
     logger = logging.getLogger("common")
     logger.setLevel(logging.DEBUG)
 
-    log_file = f"COMMON_{dt.now().strftime('%Y%m%d')}.log"
+    log_file = f"COMMON_{dt.now().strftime('%Y%m%d%H%M')}.log"
     log_path = os.path.join(_log_dir, log_file)
     file_handler = logging.FileHandler(log_path)
 

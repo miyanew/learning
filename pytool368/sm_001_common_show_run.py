@@ -13,12 +13,7 @@ sys.path.append(os.path.join(_current_dir, "./lib"))
 from sm_001_common_show_configure_log import build_logger_app, logger_common
 
 # from sm 001 common_show_evaluate_health_csdb import evaluate_health_csdb
-# from sm 001 common_show_evaluate_health_csdbent import evaluate_health_csdbent
-# from sm_001_common_show_evaluate_health_smf import evaluate_health_smf
-# from sm 001 common_show_evaluate_health_smfent import evaluate_health_smfent
-# from sm 001_common_show_evaluate_health_upf import evaluate_health_upf
-# from sm 001_common_show_evaluate_health_upfent import evaluate_health_upfent
-# from sm_001_common_show_execute_healthcheck_command import execute_commands
+# from sm_001_common_show_execute_command import execute_commands
 
 _config_dir = os.path.join(_current_dir, "config")
 
@@ -27,7 +22,7 @@ def main(options):
     logger_common.info("This is a normal log from run")
     logger_common.error("This is an error log from run")
 
-    connect_props = select_connect_props(hostnames)
+    connect_props = select_connect_props(options.hostnames)
     print(connect_props)
 
     # for ret in results:
@@ -41,18 +36,33 @@ def main(options):
     #         logger.info(ret["content"])
 
 
+def load_hostlist(file_path):
+    if not os.path.exists(file_path):
+        msg = f"file not found: {file_path}"
+        raise FileNotFoundError(msg)
+    with open(file_path, "r") as file:
+        return [
+            line.strip()
+            for line in file
+            if line.strip() and not line.strip().startwitch("#")
+        ]
+
+
 def select_connect_props(hostnames):
     conn_props_all = load_connect_props()
 
-    return [
-        {**conn_props_all[hostname], "host": hostname}
-        for hostname in hostnames
-    ]
+    return [{**conn_props_all[hostname], "host": hostname} for hostname in hostnames]
 
 
 def load_connect_props():
-    connect_config_path = os.path.join(CONFIG_DIR, "connect_config.json")
-    with open(connect_config_path, "r") as file:
+    return load_json_file(os.path.join(_config_dir, "connect_config.json"))
+
+
+def load_json_file(file_path):
+    if not os.path.exists(file_path):
+        msg = f"file not found: {file_path}"
+        raise FileNotFoundError(msg)
+    with open(file_path, "r") as file:
         return json.load(file)
 
 
@@ -62,13 +72,11 @@ if __name__ == "__main__":
     parser.add_argument("-w", action="store_true")
     parser.add_argument("-c", action="store_true")
     parser.add_argument("--hostnames", required=True, nargs="*")
-    
+
     args = parser.parse_args()
-    
-    arguments = vars(args)
 
     try:
-        main(arguments)
+        main(args)
     except Exception as e:
-        print(str("Unexpected error: %s" % e))
+        print(f"Unexpected error: {e}")
         traceback.print_exc()
