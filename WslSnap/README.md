@@ -1,7 +1,7 @@
 
 ## 概要
 
-数GBサイズのファイル出力を伴うWSL環境のスナップショット取得と環境構築を簡略にした。
+数GBサイズのファイル出力をともなうWSL環境のスナップショット取得と環境構築をまとめて実行する。
 
 [WSL の基本的なコマンド](https://learn.microsoft.com/ja-jp/windows/wsl/basic-commands#export-a-distribution)より
 
@@ -16,6 +16,7 @@ ProjectRoot> powershell -ExecutionPolicy ByPass .\src\WslClone.ps1 **コピー�
 
 ## ディレクトリ構成
 
+```
 ProjectRoot/
   ├── src/
   │   └── WslClone.ps1
@@ -24,3 +25,10 @@ ProjectRoot/
   ├── snapshot/
   ├── distribution/
   └── README.md
+```
+
+## 参考URL
+
+[クラスについて \- PowerShell \| Microsoft Learn](https://learn.microsoft.com/ja-jp/powershell/module/microsoft.powershell.core/about/about_classes?view=powershell-7.4)
+
+[自動変数について \- PowerShell \| Microsoft Learn](https://learn.microsoft.com/ja-jp/powershell/module/microsoft.powershell.core/about/about_automatic_variables?view=powershell-7.4#psscriptroot)
