@@ -2,7 +2,8 @@
 setlocal
 
 rem Set the path to the PowerShell script
-set POWERSHELL_SCRIPT=%~dp0../src/wslClone.ps1
+set BATCH_NAME=%~n0
+set POWERSHELL_SCRIPT=%~dp0../src/%BATCH_NAME%.ps1
 
 rem Check if the PowerShell script exists
 if not exist "%POWERSHELL_SCRIPT%" (
