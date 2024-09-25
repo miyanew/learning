@@ -1,54 +1,53 @@
 class Remote {
     [string]$IpAddress
     [string]$Account
-    [string]$Password
-    [string]$LocalDir
+    [System.Management.Automation.PSCredential]$Credential
 
-    Remote([string]$ipAddress, [string]$account, [string]$password) {
-        $this.IpAddress = $ipAddress
-        $this.Account = $account
-        $this.Password = $password
-        # $this.HomeDir = ""
+    Remote() {
+        $this.IpAddress = $env:REMOTE_IP
+        $this.Account = $env:REMOTE_ACCOUNT
+        $securePassword = ConvertTo-SecureString $env:REMOTE_PASSWORD -AsPlainText -Force
+        $this.Credential = New-Object System.Management.Automation.PSCredential ($this.Account, $securePassword)
     }
 
-    [void] Upload([string]$clientDir, [string]$fileNamePattern, [string]$relativeDir = "") {
-        # sftp put コマンド  localDir -> remote
+    [void] Upload([string]$fileNamePattern = "*", [string]$remoteDir = "") {
+        $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
+        $cmdPut = "put $($fileNamePattern) $($remoteDir)/"
+        $cmdExit = "exit"
+        
+        & $env:WINSCP_PATH /command $cmdOpen $cmdPut $cmdExit
     }
+    
+    [void] Download([string]$fileNamePattern = "*", [string]$localDir) {
+        $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
+        $cmdGet = "get $($fileNamePattern) $($localDir)\"
+        $cmdExit = "exit"
 
-    [void] Download([string]$relativeDir = "", [string]$fileNamePattern = "*", [string]$destDir) {
-        # sftp get コマンド  remote -> localDir
-    }
-
-    [string] Lst([string]$relativeDir = "./") {
-        # sftp lst コマンド
-        return '$remoteDirResult'
+        & $env:WINSCP_PATH /command $cmdOpen $cmdGet $cmdExit
     }
 }
 
 class S3 {
-    [string]$IpAddress
-    [string]$Account
-    [string]$Password
-    [string]$LocalDir
+    [string]$Url
+    [string]$Region
+    [string]$Profile
 
-    S3([string]$ipAddress, [string]$account, [string]$password) {
-        $this.IpAddress = $ipAddress
-        $this.Account = $account
-        $this.Password = $password
+    S3([string]$objectpath) {
+        $bucket = "s3-bkt-name"
+        $this.Url = "s3://$($bucket)/$($objectpath)/"
+        $this.Region = "ap-northeast-1"
+        $this.Profile = "mfa_profile"
     }
 
-    [string] Download([string]$fileNamePattern = "*", [string]$remoteDir = "./") {
-        # sftp get コマンド  remote -> localDir
-        return '$localDir'
+    [void] Upload([string]$localDir) {
+        aws s3 mv $localDir $this.Url --include "*" --recursive --region $this.Region --profile $this.Profile
     }
 
-    [string] Upload([string]$fileNamePattern = "*", [string]$remoteDir = "./") {
-        # sftp put コマンド  localDir -> remote
-        return '$remoteDir'
+    [void] Download([string]$localDir) {
+        aws s3 mv $this.Url $localDir --include "*" --recursive --region $this.Region --profile $this.Profile
     }
 
-    [string] Lst([string]$remoteDir = "./") {
-        # sftp lst コマンド
-        return '$remoteDirResult'
+    [string[]] Lst() {
+        return aws s3 ls $this.Url --region $this.Region --profile $this.Profile
     }
 }

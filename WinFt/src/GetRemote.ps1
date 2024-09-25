@@ -1,32 +1,26 @@
 using module .\Remote.psm1
+using module .\Dotenv.psm1
 
-function GenerateLocalDir($rootDir) {
-    $tmpDir = Join-Path $rootDir 'tmp'
-    $dateDir = Join-Path $tmpDir (Get-Date).ToString('yyyyMMddHHmmss')
-
+function GenerateLocalDir($parentDir) {
+    $dateDir = Join-Path $parentDir (Get-Date).ToString('yyyyMMddHHmmss')
     if (-not (Test-Path $dateDir)) {
         New-Item -Path $dateDir -ItemType Directory -Force | Out-Null
     }
+    return $dateDir
 }
 
-function Main($remoteDir, $include) {
+function Main($remoteFile) {
+    Set-DotEnv
     $rootDir = Join-Path $PSScriptRoot '..'
-    $lolalDir = GenerateLocalDir $rootDir
-    
-    $fileServer = [Remote]::new("ip", "user", "pw")
-    $fileServer.Download("/remote/path", "*.txt", $lolalDir)
-}
+    $tmpDir = Join-Path $rootDir 'tmp'
+    $env:WINSCP_PATH
 
-# $fileServer.Upload($lolalDir, "*.txt", "/remote/path")
+    $fileServer = [Remote]::new()
+    $localDir = GenerateLocalDir $tmpDir
+
+    $fileServer.Download($remoteFile, $localDir)
+}
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Main -remoteDir $args[0] -include $args[1]
+    Main -remoteFile $args[0]
 }
-
-
-<#
-https://learn.microsoft.com/en-us/powershell/scripting/developer/module/understanding-a-windows-powershell-module?view=powershell-7.4
-https://learn.microsoft.com/en-us/powershell/scripting/developer/module/how-to-write-a-powershell-script-module?view=powershell-7.4
-https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/import-module?view=powershell-7.4
-https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_using?view=powershell-7.4
-#>
