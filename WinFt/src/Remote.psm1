@@ -6,21 +6,21 @@ class Remote {
     Remote() {
         $this.IpAddress = $env:REMOTE_IP
         $this.Account = $env:REMOTE_ACCOUNT
-        $securePassword = ConvertTo-SecureString $env:REMOTE_PASSWORD -AsPlainText -Force
-        $this.Credential = New-Object System.Management.Automation.PSCredential ($this.Account, $securePassword)
+        $securePw = ConvertTo-SecureString $env:REMOTE_PASSWORD -AsPlainText -Force
+        $this.Credential = New-Object System.Management.Automation.PSCredential ($this.Account, $securePw)
     }
 
-    [void] Upload([string]$fileNamePattern = "*", [string]$remoteDir = "") {
+    [void] Upload([string]$localFile = "*", [string]$remoteDir = "") {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdPut = "put $($fileNamePattern) $($remoteDir)/"
+        $cmdPut = "put $localFile $remoteDir/"
         $cmdExit = "exit"
         
         & $env:WINSCP_PATH /command $cmdOpen $cmdPut $cmdExit
     }
     
-    [void] Download([string]$fileNamePattern = "*", [string]$localDir) {
+    [void] Download([string]$remoteFile = "*", [string]$localDir) {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdGet = "get $($fileNamePattern) $($localDir)\"
+        $cmdGet = "get $remoteFile $localDir\"
         $cmdExit = "exit"
 
         & $env:WINSCP_PATH /command $cmdOpen $cmdGet $cmdExit

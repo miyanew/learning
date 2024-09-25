@@ -10,10 +10,8 @@ function GenerateLocalDir($parentDir) {
 }
 
 function Main($remoteFile) {
-    Set-DotEnv
     $rootDir = Join-Path $PSScriptRoot '..'
     $tmpDir = Join-Path $rootDir 'tmp'
-    $env:WINSCP_PATH
 
     $fileServer = [Remote]::new()
     $localDir = GenerateLocalDir $tmpDir
@@ -22,5 +20,6 @@ function Main($remoteFile) {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
+    Set-DotEnv -envFile (Join-Path $PSScriptRoot '.env')
     Main -remoteFile $args[0]
 }
