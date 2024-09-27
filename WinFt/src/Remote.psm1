@@ -10,17 +10,17 @@ class Remote {
         $this.Credential = New-Object System.Management.Automation.PSCredential ($this.Account, $securePw)
     }
 
-    [void] Upload([string]$localFile = "*", [string]$remoteDir = "") {
+    [void] Upload([string]$sourceFile = "*", [string]$destinationDir = "") {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdPut = "put $localFile $remoteDir/"
+        $cmdPut = "put $sourceFile $destinationDir/"
         $cmdExit = "exit"
         
         & $env:WINSCP_PATH /command $cmdOpen $cmdPut $cmdExit
     }
     
-    [void] Download([string]$remoteFile = "*", [string]$localDir) {
+    [void] Download([string]$sourceFile = "*", [string]$destinationDir) {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdGet = "get $remoteFile $localDir\"
+        $cmdGet = "get $sourceFile `"`"$destinationDir\`"`""
         $cmdExit = "exit"
 
         & $env:WINSCP_PATH /command $cmdOpen $cmdGet $cmdExit
