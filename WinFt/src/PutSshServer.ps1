@@ -3,7 +3,7 @@ using module .\Dotenv.psm1
 
 function Main($localFile, $remoteDir) {
     if ([string]::IsNullOrEmpty($remoteDir)) {
-        $remoteDir = "."
+        $remoteDir = "./"
     }
 
     $localDir = GetLatestLocalDir

@@ -9,5 +9,4 @@ function Main() {
 if ($MyInvocation.InvocationName -ne '.') {
     Set-DotEnv -envFile (Join-Path $PSScriptRoot '../.env')
     Main
-    Start-Sleep 3
 }

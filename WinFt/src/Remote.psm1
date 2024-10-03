@@ -12,26 +12,26 @@ class SshServer {
 
     [void] Upload([string]$sourceFile = "*", [string]$destinationDir) {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdPut = "put $sourceFile $destinationDir/"
+        $cmdPut = "put $sourceFile $destinationDir"
         $cmdExit = "exit"
-        
+
         & $env:WINSCP_PATH /command $cmdOpen $cmdPut $cmdExit
     }
-    
+
     [void] Download([string]$sourceFile = "*", [string]$destinationDir) {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
-        $cmdGet = "get $sourceFile `"`"$destinationDir\`"`""
+        $cmdGet = "get $sourceFile `"`"$destinationDir`"`""
         $cmdExit = "exit"
 
         & $env:WINSCP_PATH /command $cmdOpen $cmdGet $cmdExit
     }
 
-    [void] Lst([string]$file = "*") {
+    [string[]] Lst([string]$file = "*") {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
         $cmdLs = "ls $file"
         $cmdExit = "exit"
 
-        & $env:WINSCP_PATH /command $cmdOpen $cmdLs $cmdExit
+        return & $env:WINSCP_PATH /command $cmdOpen $cmdLs $cmdExit
     }
 }
 

@@ -1,12 +1,12 @@
 Set-Location $PSScriptRoot
 
-& .\Ls3.ps1
+& .\LsS3.ps1
 Write-Output "---"
 
 & .\GetS3.ps1 $args[0]
 Write-Output "File retrieval complete, starting transfer."
 
-& .\PutRemote.ps1 $args[0] $args[1]
+& .\PutSshServer.ps1 $args[0] $args[1]
 Write-Output "File transfer complete!`n---"
 
-& .\LsRemote.ps1 $args[0]
+& .\LsSshServer.ps1 $args[0]

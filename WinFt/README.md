@@ -1,16 +1,16 @@
 # ファイル転送スクリプト
 
-- SSHサーバ、WindowsPC、S3ストレージ間でファイル転送を行う。
+- WindowsPC、SSHサーバ（Linux）、S3ストレージ間でファイルを転送する。
 
 ## 概要
 
 以下の3つのノード間でファイルを転送する
 
-1. SSHサーバ
 1. WindowsPC
+1. SSHサーバ
 1. S3ストレージ
 
-```
+  ```text
   ┌─────────────┐      1. Get        ┌─────────────┐
   │             │ <───────────────── │             │
   │  WindowsPC  │ ─────────────────> │  SSH Server │
@@ -21,16 +21,16 @@
   │             │ ─────────────────> │ S3 Storage  │
   │             │      4. Put        │             │
   └─────────────┘                    └─────────────┘
-```
+  ```
 
-このスクリプトは、以下のファイル転送操作を実行できます
+このスクリプトは、以下のファイル転送操作を実行できる
 
 1. WindowsPC ← SSHサーバ （Get）
 1. WindowsPC → SSHサーバ （Put）
 1. WindowsPC ← S3ストレージ （Get）
 1. WindowsPC → S3ストレージ （Put）
-1. SSHサーバ → S3ストレージ （1. → 4.）
-1. S3ストレージ → SSHサーバ （3. → 2.）
+1. SSHサーバ → S3ストレージ （1. & 4.）
+1. S3ストレージ → SSHサーバ （3. & 2.）
 
 ## 動作環境
 
@@ -40,13 +40,39 @@
 
 ## 実行方法
 
-1. envファイルを作成する
+1. アプリルートに `.env` ファイルを作成する
 
-2. コンソール画面から実行する
+  ```text
+  AppRoot/
+    ├── src/
+    ├── bin/
+    └── .env
+  ```
 
-```
-ProjectRoot> powershell -ExecutionPolicy ByPass .\src\GetR.ps1 "*" 
-```
+  ```text
+  # .env
+  [local]
+  WINSCP_PATH=
+  LOCAL_DIR=
+  
+  [SSH Server]
+  SSH_SERVER_IP=
+  SSH_SERVER_ACCOUNT=
+  SSH_SERVER_PASSWORD=
+  
+  [S3]
+  BUCKET_NAME=
+  OBJECT_PATH=
+  REGION=
+  PROFILE=
+  ```
+
+1. PowerShellのコンソール画面から実行する
+
+  ```PowerShell
+  # アプリルートから実行する場合
+  AppRoot> powershell -ExecutionPolicy ByPass .\src\SvToS3.ps1 "*" 
+  ```
 
 ## 参考URL
 

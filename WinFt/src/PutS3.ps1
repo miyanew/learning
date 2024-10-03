@@ -5,7 +5,7 @@ function Main($localFile) {
     $localDir = GetLatestLocalDir
 
     $fileServer = [S3]::new()
-    $fileServer.Upload($localFile)
+    $fileServer.Upload($localFile, $localDir)
 }
 
 function GetLatestLocalDir() {        

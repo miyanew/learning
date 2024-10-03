@@ -7,7 +7,7 @@ function Main($remoteFile, $remoteDir) {
     }
     $remotePath = [System.IO.Path]::Combine($remoteDir, $remoteFile)
 
-    $localDir = ConstructLocalDir
+    $localDir = Join-Path (ConstructLocalDir) "\"
     GenerateDir $localDir
     
     $fileServer = [SshServer]::new()
