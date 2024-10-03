@@ -25,4 +25,6 @@ IF %ERRORLEVEL% NEQ 0 (
     exit /b %ERRORLEVEL%
 )
 
+timeout /t 5
+
 endlocal
