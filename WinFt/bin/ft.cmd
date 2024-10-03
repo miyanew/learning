@@ -2,16 +2,22 @@
 setlocal
 
 rem Set the path to the PowerShell script
-set POWERSHELL_SCRIPT=%~dp0../src/%1.ps1
+set SCRIPT_DIR=%~dp0../src
+set POWERSHELL_SCRIPT=%SCRIPT_DIR%\%1.ps1
+set SHORTCUT_FILE=%SCRIPT_DIR%\%1.lnk
 
 rem Check if the PowerShell script exists
-if not exist "%POWERSHELL_SCRIPT%" (
-    echo Error: PowerShell script not found at %POWERSHELL_SCRIPT%
+if exist "%POWERSHELL_SCRIPT%" (
+    set SCRIPT_TO_RUN=%POWERSHELL_SCRIPT%
+) else if exist "%SHORTCUT_FILE%" (
+    for /f "delims=" %%I in ('powershell -command "(New-Object -ComObject WScript.Shell).CreateShortcut('%SHORTCUT_FILE%').TargetPath"') do set SCRIPT_TO_RUN=%%I
+) else (
+    echo Error: Neither PowerShell script nor shortcut found for %1
     exit /b 1
 )
 
 rem Execute the PowerShell script
-PowerShell.exe -ExecutionPolicy Bypass -File "%POWERSHELL_SCRIPT%" %2 %3
+PowerShell.exe -ExecutionPolicy Bypass -File "%SCRIPT_TO_RUN%" %2 %3
 
 rem Check the exit code
 IF %ERRORLEVEL% NEQ 0 (
