@@ -1,16 +1,16 @@
-class Remote {
+class SshServer {
     [string]$IpAddress
     [string]$Account
     [System.Management.Automation.PSCredential]$Credential
 
-    Remote() {
-        $this.IpAddress = $env:REMOTE_IP
-        $this.Account = $env:REMOTE_ACCOUNT
-        $securePw = ConvertTo-SecureString $env:REMOTE_PASSWORD -AsPlainText -Force
+    SshServer() {
+        $this.IpAddress = $env:SSH_SERVER_IP
+        $this.Account = $env:SSH_SERVER_ACCOUNT
+        $securePw = ConvertTo-SecureString $env:SSH_SERVER_PASSWORD -AsPlainText -Force
         $this.Credential = New-Object System.Management.Automation.PSCredential ($this.Account, $securePw)
     }
 
-    [void] Upload([string]$sourceFile = "*", [string]$destinationDir = "") {
+    [void] Upload([string]$sourceFile = "*", [string]$destinationDir) {
         $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
         $cmdPut = "put $sourceFile $destinationDir/"
         $cmdExit = "exit"
@@ -25,6 +25,14 @@ class Remote {
 
         & $env:WINSCP_PATH /command $cmdOpen $cmdGet $cmdExit
     }
+
+    [void] Lst([string]$file = "*") {
+        $cmdOpen = "open sftp://$($this.Account):$($this.Credential.GetNetworkCredential().Password)@$($this.IpAddress)"
+        $cmdLs = "ls $file"
+        $cmdExit = "exit"
+
+        & $env:WINSCP_PATH /command $cmdOpen $cmdLs $cmdExit
+    }
 }
 
 class S3 {
@@ -32,19 +40,18 @@ class S3 {
     [string]$Region
     [string]$Profile
 
-    S3([string]$objectpath) {
-        $bucket = "s3-bkt-name"
-        $this.Url = "s3://$($bucket)/$($objectpath)/"
-        $this.Region = "ap-northeast-1"
-        $this.Profile = "mfa_profile"
+    S3() {
+        $this.Url = "s3://$($env:BUCKET_NAME)/$($env:OBJECT_PATH)/"
+        $this.Region = $env:REGION
+        $this.Profile = $env:PROFILE
     }
 
-    [void] Upload([string]$localDir) {
-        aws s3 mv $localDir $this.Url --include "*" --recursive --region $this.Region --profile $this.Profile
+    [void] Upload([string]$filePattern = "*", [string]$sourceDir) {
+        aws s3 mv $sourceDir $this.Url --include $filePattern --recursive --region $this.Region --profile $this.Profile
     }
 
-    [void] Download([string]$localDir) {
-        aws s3 mv $this.Url $localDir --include "*" --recursive --region $this.Region --profile $this.Profile
+    [void] Download([string]$filePattern = "*", [string]$destinationDir) {
+        aws s3 mv $this.Url $destinationDir --include $filePattern --recursive --region $this.Region --profile $this.Profile
     }
 
     [string[]] Lst() {
