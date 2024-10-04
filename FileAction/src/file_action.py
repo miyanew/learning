@@ -2,10 +2,10 @@ import argparse
 import traceback
 
 
-def contains_string(options: argparse.Namespace) -> bool:
+def contains_string(fipe_path: str, keyword: str) -> bool:
     try:
-        with open(options.file, "r", encoding="utf-8") as f:
-            return any(options.keyword in line for line in f)
+        with open(fipe_path, "r", encoding="utf-8") as f:
+            return any(keyword in line for line in f)
     except FileNotFoundError:
         raise FileNotFoundError("file not found error") from None
     except IOError:
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         exit(1)
 
     try:
-        print(contains_string(args))
+        print(contains_string(args.file, args.keyword))
     except (FileNotFoundError, IOError) as e:
         print(f"unexpected error: {e}")
         traceback.print_exc()
