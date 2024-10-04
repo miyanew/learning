@@ -2,14 +2,23 @@ import argparse
 import traceback
 
 
-def contains_string(fipe_path: str, keyword: str) -> bool:
+def search_keyword_in_file(file_path: str, keyword: str) -> bool:
+    content = load_file_contents(file_path)
+    return contains_string(content, keyword)
+
+
+def load_file_contents(file_path: str) -> str:
     try:
-        with open(fipe_path, "r", encoding="utf-8") as f:
-            return any(keyword in line for line in f)
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
     except FileNotFoundError:
         raise FileNotFoundError("file not found error") from None
     except IOError:
         raise IOError("file load error") from None
+
+
+def contains_string(text: str, keyword: str) -> bool:
+    return keyword in text
 
 
 if __name__ == "__main__":
@@ -25,7 +34,7 @@ if __name__ == "__main__":
         exit(1)
 
     try:
-        print(contains_string(args.file, args.keyword))
+        print(search_keyword_in_file(args.file, args.keyword))
     except (FileNotFoundError, IOError) as e:
         print(f"unexpected error: {e}")
         traceback.print_exc()
