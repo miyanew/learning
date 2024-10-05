@@ -4,7 +4,7 @@ import traceback
 
 def search_keyword_in_file(file_path: str, keyword: str) -> bool:
     content = load_file_contents(file_path)
-    return contains_string(content, keyword)
+    return is_keyword_in_text(content, keyword)
 
 
 def load_file_contents(file_path: str) -> str:
@@ -17,7 +17,7 @@ def load_file_contents(file_path: str) -> str:
         raise IOError("file load error") from None
 
 
-def contains_string(text: str, keyword: str) -> bool:
+def is_keyword_in_text(text: str, keyword: str) -> bool:
     return keyword in text
 
 
