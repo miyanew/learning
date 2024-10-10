@@ -1,19 +1,20 @@
 import argparse
 import json
 import os
-import sys
-from typing import Dict, Any
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_DIR = os.path.join(SCRIPT_DIR, "config")
+from typing import Any, Dict
 
-sys.path.append(CONFIG_DIR)
+from MySSH import MySsh
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIR = os.path.join(current_dir, "config")
 
 
 def main(opts):
     ssh_config = load_ssh_config()
-    print(ssh_config)
-    print(opts.host)
+    with MySsh(ssh_config[opts.host]) as session:
+        resp = session.sendln(opts.command)
+        print(resp)
 
 
 def load_ssh_config() -> Dict[str, Any]:
