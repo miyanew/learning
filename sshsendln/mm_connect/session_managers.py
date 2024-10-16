@@ -8,14 +8,20 @@ class SessionStrategy(Protocol):
 
     def disconnect(self) -> None: ...
 
+    def send_command(self) -> str: ...
+
 
 class SessionManager(ABC):
     @abstractmethod
-    def connect(self):
+    def connect(self) -> None:
         pass
 
     @abstractmethod
-    def disconnect(self):
+    def disconnect(self) -> None:
+        pass
+
+    @abstractmethod
+    def send_command(self) -> str:
         pass
 
 
@@ -31,16 +37,16 @@ class LeafServer(SessionManager):
     def disconnect(self) -> None:
         self.session = self.session_strategy.disconnect(self.session)
 
+    def send_command(self, command: str) -> str:
+        return self.session_strategy.send_command(self.session, command)
+
 
 class BastionServer(SessionManager):
     def __init__(self, host_name: str, session_strategy: SessionStrategy):
         self.host_name = host_name
         self.session_strategy = session_strategy
-        self.next_hops = []
         self.session = None
-
-    def add(self, server: SessionManager) -> None:
-        self.next_hops.append(server)
+        self.next_hops = []
 
     def connect(self) -> None:
         self.session = self.session_strategy.connect(self.session)
@@ -57,3 +63,9 @@ class BastionServer(SessionManager):
         for next_hop in self.next_hops:
             next_hop.disconnect()
         self.disconnect()
+
+    def send_command(self, command: str) -> str:
+        return self.session_strategy.send_command(self.session, command)
+
+    def add(self, server: SessionManager) -> None:
+        self.next_hops.append(server)

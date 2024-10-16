@@ -1,11 +1,12 @@
 import argparse
 
-from mm_connect import mm_connect
+from mm_connect.mm_connect import SSHConnectionManager
 
 
 def main(opts):
-    ini_hop = mm_connect.get_host(opts.host)
-    print(ini_hop.host_name)
+    ini_hop = SSHConnectionManager().get_connections(opts.host)
+    print(ini_hop[-1].host_name)
+    print(ini_hop[-1].send_command(opts.command))
 
 
 if __name__ == "__main__":
