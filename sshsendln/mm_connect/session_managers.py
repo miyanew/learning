@@ -1,28 +1,4 @@
-from abc import ABC, abstractmethod
-
-from typing_extensions import Protocol
-
-
-class SessionStrategy(Protocol):
-    def connect(self) -> None: ...
-
-    def disconnect(self) -> None: ...
-
-    def send_command(self) -> str: ...
-
-
-class SessionManager(ABC):
-    @abstractmethod
-    def connect(self) -> None:
-        pass
-
-    @abstractmethod
-    def disconnect(self) -> None:
-        pass
-
-    @abstractmethod
-    def send_command(self) -> str:
-        pass
+from .session_interfaces import SessionManager, SessionStrategy
 
 
 class LeafServer(SessionManager):
@@ -38,6 +14,8 @@ class LeafServer(SessionManager):
         self.session = self.session_strategy.disconnect(self.session)
 
     def send_command(self, command: str) -> str:
+        if self.session is None:
+            raise ConnectionError("Not connected")
         return self.session_strategy.send_command(self.session, command)
 
 
@@ -65,6 +43,8 @@ class BastionServer(SessionManager):
         self.disconnect()
 
     def send_command(self, command: str) -> str:
+        if self.session is None:
+            raise ConnectionError("Not connected")
         return self.session_strategy.send_command(self.session, command)
 
     def add(self, server: SessionManager) -> None:

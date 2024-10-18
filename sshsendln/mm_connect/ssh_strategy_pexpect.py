@@ -22,7 +22,7 @@ class PexpectSSHSessionStrategy:
 
     def connect(self, session: pexpect.spawn) -> pexpect.spawn:
         try:
-            print(f"connected_{self.ip_address}_{self.key_filename}")
+            print(f"ssh_{self.key_filename}_{self.ip_address}")
             return self._establish_connection(session)
         except pexpect.TIMEOUT as e:
             raise ConnectionError("Connection timed out") from e
@@ -88,6 +88,7 @@ class PexpectSSHSessionStrategy:
         )
         if index == 1:
             self._handle_password_prompt(spawn_obj)
+
         if index != 0:
             raise ConnectionError(
                 "Failed to get command prompt after accepting host key"
@@ -122,15 +123,22 @@ class PexpectSSHSessionStrategy:
         try:
             session.sendline(command)
             index = session.expect(
-                [self.command_prompt, pexpect.EOF, pexpect.TIMEOUT], timeout
+                [self.command_prompt, pexpect.EOF, pexpect.TIMEOUT],
+                timeout,
             )
 
             if index == 0:
-                return session.before.decode(encoding="utf-8")
+                return (
+                    session.before.decode(encoding="utf-8")
+                    if session.before is not None
+                    else ""
+                )
             elif index == 1:
                 raise EOFError("SSH session was terminated unexpectedly")
             elif index == 2:
                 raise TimeoutError("Command execution timed out")
+            else:
+                raise RuntimeError("Unexpected index value encounterd")
 
         except pexpect.TIMEOUT as e:
             raise TimeoutError(f"Command execution timed out: {e}") from e
