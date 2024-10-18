@@ -4,9 +4,14 @@ from mm_connect.mm_connect import SSHConnectionManager
 
 
 def main(opts):
-    ini_hop = SSHConnectionManager().get_connections(opts.host)
-    print(ini_hop[-1].host_name)
-    print(ini_hop[-1].send_command(opts.command))
+    hosts = SSHConnectionManager().get_hosts(opts.host)
+    for host in hosts:
+        print(f"==={host.host_name}===")
+        print(host.send_command(opts.command))
+
+    # host = SSHConnectionManager().get_host(opts.host)
+    # print(f"==={host.host_name}===")
+    # print(host.send_command(opts.command))
 
 
 if __name__ == "__main__":

@@ -47,5 +47,5 @@ class BastionServer(SessionManager):
             raise ConnectionError("Not connected")
         return self.session_strategy.send_command(self.session, command)
 
-    def add(self, server: SessionManager) -> None:
-        self.next_hops.append(server)
+    def add(self, session_manager: SessionManager) -> None:
+        self.next_hops.append(session_manager)

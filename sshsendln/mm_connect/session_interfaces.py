@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
 
-from typing import Any, Dict, List
 from typing_extensions import Protocol
 
 
@@ -15,7 +16,10 @@ class SessionStrategy(Protocol):
         ...
 
 
+@dataclass
 class SessionManager(ABC):
+    host_name: str
+
     @abstractmethod
     def connect(self) -> Any:
         pass

@@ -67,6 +67,7 @@ class PexpectSSHSessionStrategy:
         )
 
         if index == 0:
+            print("pw_prompt")
             return
         elif index == 1:
             self._handle_password_prompt(spawn_obj)
@@ -79,7 +80,9 @@ class PexpectSSHSessionStrategy:
         spawn_obj.sendline(self.password)
         index = spawn_obj.expect([self.command_prompt, pexpect.EOF, pexpect.TIMEOUT])
         if index != 0:
-            raise ConnectionError("Failed to get command prompt after password login")
+            raise ConnectionError(
+                f"Failed to get command prompt after password login: index{index}"
+            )
 
     def _handle_host_key_prompt(self, spawn_obj: pexpect.spawn) -> None:
         spawn_obj.sendline("yes")
@@ -99,7 +102,7 @@ class PexpectSSHSessionStrategy:
             raise ValueError("No active sessions to logout from")
 
         try:
-            self._terminate_session(session)
+            self._terminate_connection(session)
             session.close()
         except pexpect.TIMEOUT as e:
             raise ConnectionError("Disconnect timed out") from e
@@ -108,14 +111,14 @@ class PexpectSSHSessionStrategy:
         except Exception as e:
             raise ConnectionError(f"Failed to finish SSH connection: {e}") from e
 
-    def _terminate_session(self, session: pexpect.spawn) -> None:
+    def _terminate_connection(self, session: pexpect.spawn) -> None:
         session.sendline(self.logout_command)
         index = session.expect([pexpect.EOF, pexpect.TIMEOUT])
         if index != 0:
             raise ConnectionError("Logout command did not complete successfully")
 
     def send_command(
-        self, session: pexpect.spawn, command: str, timeout: float = 10
+        self, session: pexpect.spawn, command: str, timeout: float = 30
     ) -> str:
         if not session:
             raise ValueError("No active session to send command to")
