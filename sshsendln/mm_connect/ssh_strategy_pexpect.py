@@ -1,4 +1,5 @@
 import pexpect
+from .exceptions import ConnectionError, CommandError
 
 
 class PexpectSSHSessionStrategy:
@@ -121,7 +122,7 @@ class PexpectSSHSessionStrategy:
         self, session: pexpect.spawn, command: str, timeout: float = 30
     ) -> str:
         if not session:
-            raise ValueError("No active session to send command to")
+            raise ConnectionError("No active session to send command to")
 
         try:
             session.sendline(command)
@@ -137,17 +138,17 @@ class PexpectSSHSessionStrategy:
                     else ""
                 )
             elif index == 1:
-                raise EOFError("SSH session was terminated unexpectedly")
+                raise CommandError("SSH session was terminated unexpectedly")
             elif index == 2:
-                raise TimeoutError("Command execution timed out")
+                raise CommandError("Command execution timed out")
             else:
-                raise RuntimeError("Unexpected index value encounterd")
+                raise CommandError("Unexpected index value encounterd")
 
         except pexpect.TIMEOUT as e:
-            raise TimeoutError(f"Command execution timed out: {e}") from e
+            raise CommandError(f"Command execution timed out: {e}") from e
         except pexpect.EOF as e:
-            raise EOFError(f"SSH session was terminated unexpectedly: {e}") from e
+            raise CommandError(f"SSH session was terminated unexpectedly: {e}") from e
         except Exception as e:
-            raise RuntimeError(
+            raise CommandError(
                 f"An error occurred while executing the command: {e}"
             ) from e
