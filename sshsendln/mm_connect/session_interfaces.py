@@ -6,14 +6,11 @@ from typing_extensions import Protocol
 
 
 class SessionStrategy(Protocol):
-    def connect(self) -> Any:
-        ...
+    def start_session(self) -> Any: ...
 
-    def disconnect(self) -> None:
-        ...
+    def end_session(self) -> None: ...
 
-    def send_command(self) -> str:
-        ...
+    def send_command(self) -> str: ...
 
 
 @dataclass
@@ -21,11 +18,11 @@ class SessionManager(ABC):
     host_name: str
 
     @abstractmethod
-    def connect(self) -> Any:
+    def start_session(self) -> Any:
         pass
 
     @abstractmethod
-    def disconnect(self) -> None:
+    def end_session(self) -> None:
         pass
 
     @abstractmethod

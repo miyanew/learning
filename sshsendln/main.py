@@ -1,10 +1,10 @@
 import argparse
 
-from mm_connect.mm_connect import SSHConnectionManager
+from mm_connect.mm_connect import SessionManagerFactory
 
 
 def main(opts):
-    hosts = SSHConnectionManager().get_hosts(opts.host)
+    hosts = SessionManagerFactory().create_sessions(opts.host)
     for host in hosts:
         print(f"==={host.host_name}===")
         print(host.send_command(opts.command))

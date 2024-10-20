@@ -1,106 +1,94 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, List
 
 from .config_loader import load_json_file
 from .session_interfaces import SessionManager, SessionStrategy
-from .session_managers import BastionServer, LeafServer
+from .session_managers import BastionNode, TargetNode
 
 # from .ssh_strategy_netmiko import NetmikoSSHSessionStrategy
 from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
+from .sftp_strategy_paramiko import ParamikoSFTPSessionStrategy
 from .ssh_strategy_pexpect import PexpectSSHSessionStrategy
 
-# from .sftp_strategy_paramiko import ParamikoSFTPSessionStrategy
-# from .sftp_strategy_pexpect import PexpectSFTPSessionStrategy
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-
-class SSHConnectionManager:
+class SessionManagerFactory:
     def __init__(self, config_file: str = "ssh_host.json"):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         config_file = os.path.join(current_dir, config_file)
         self.ssh_configs = load_json_file(config_file)
 
-    def get_hosts(self, host_name: str) -> List[SessionManager]:
-        ssh_config = self.ssh_configs.get(host_name)
-        if not ssh_config:
-            raise ValueError(f"No configuration found for host: {host_name}")
+    def create_session(self, host_name: str) -> SessionManager:
+        """
+        Facade method to create and establish a single session.
+        """
+        return self.create_sessions(host_name)[-1]
 
-        hosts = self._set_jump_hosts(ssh_config.get("jump_hosts", []))
-        hosts.append(self._set_leaf_host(host_name))
+    def create_sessions(self, host_name: str) -> List[SessionManager]:
+        """
+        Facade method to create and establish all required sessions including bastions.
+        """
+        ssh_config = self._get_config(host_name)
+        hosts = self._create_bastions(ssh_config.get("bastions", []))
+        hosts.append(self._create_target(host_name))
         self._establish_connection(hosts)
         return hosts
 
-    def get_host(self, host_name: str) -> SessionManager:
-        """Get the leaf host for the given host name.
+    def _get_config(self, host_name: str) -> dict:
+        if host_name not in self.ssh_configs:
+            raise ValueError(f"No configuration found for host: {host_name}")
+        return self.ssh_configs[host_name]
 
-        Args:
-            host_name: Name of the host to get configuration for
+    def _create_bastions(self, host_names: List[str]) -> List[SessionManager]:
+        return [self._create_bastion(bastion) for bastion in host_names]
 
-        Returns:
-            The leaf host configuration
+    def _create_bastion(self, host_name: str) -> SessionManager:
+        session_strategy = self._create_session_strategy(host_name)
+        return BastionNode(host_name, session_strategy)
 
-        Raises:
-            ValueError: If no configuration exists for the host name
-        """
-        hosts = self.get_hosts(host_name)
-        if not hosts:
-            raise IndexError("No hosts found after configuration")
-        return hosts[-1]
+    def _create_target(self, host_name: str) -> SessionManager:
+        session_strategy = self._create_session_strategy(host_name)
+        return TargetNode(host_name, session_strategy)
 
-    def _set_jump_hosts(self, jump_host_names: List[str]) -> List[SessionManager]:
-        return [self._set_jump_host(jump_host) for jump_host in jump_host_names]
-
-    def _set_jump_host(self, host_name: str) -> SessionManager:
-        session_strategy = self._get_session_strategy(host_name)
-        return BastionServer(host_name, session_strategy)
-
-    def _set_leaf_host(self, host_name: str) -> SessionManager:
-        session_strategy = self._get_session_strategy(host_name)
-        return LeafServer(host_name, session_strategy)
-
-    def _get_session_strategy(self, host_name: str) -> Any:
-        library = "pexpect"
+    def _create_session_strategy(self, host_name: str) -> Any:
         ssh_config = self.ssh_configs[host_name]
-        connect_type = ssh_config["connect_type"]
+        connect_type = ssh_config.get("connect_type","")
 
-        if library == "pexpect":
-            if connect_type == "ssh":
-                return PexpectSSHSessionStrategy(
-                    ip_address=ssh_config["ip_address"],
-                    username=ssh_config["username"],
-                    password=ssh_config["password"],
-                    password_prompt=ssh_config["password_prompt"],
-                    key_filename=ssh_config["key_filename"],
-                    command_prompt=ssh_config["command_prompt"],
-                    logout_command=ssh_config["logout_command"],
-                )
-            # else:
-            #     return PexpectSFTPSessionStrategy(
-            #         ip_address=ssh_config["ip_address"],
-            #         username=ssh_config["username"],
-            #         password=ssh_config["password"],
-            #         password_prompt=ssh_config["password_prompt"],
-            #         key_filename=ssh_config["key_filename"],
-            #         command_prompt=ssh_config["command_prompt"],
-            #         logout_command=ssh_config["logout_command"],
-            #     )
-        elif library == "paramiko":
-            if connect_type in ["ssh"]:
-                return ParamikoSSHSessionStrategy(
-                    ip_address=ssh_config["ip_address"],
-                    username=ssh_config["username"],
-                    password=ssh_config["password"],
-                    key_filename=ssh_config["key_filename"],
-                )
-            # else:
-            #     return ParamikoSFTPSessionStrategy(
-            #         ip_address=ssh_config["ip_address"],
-            #         username=ssh_config["username"],
-            #         password=ssh_config["password"],
-            #         key_filename=ssh_config["key_filename"],
-            # )
+        if connect_type == "pexpect":
+            return PexpectSSHSessionStrategy(
+                ip_address=ssh_config["ip_address"],
+                username=ssh_config["username"],
+                password=ssh_config["password"],
+                password_prompt=ssh_config["password_prompt"],
+                key_filename=ssh_config["key_filename"],
+                command_prompt=ssh_config["command_prompt"],
+                logout_command=ssh_config["logout_command"],
+            )
+        # elif connect_type == "netmiko":
+        #     return NetmikoSSHSessionStrategy(
+        #         ip_address=ssh_config["ip_address"],
+        #         username=ssh_config["username"],
+        #         password=ssh_config["password"],
+        #         device_type="linux",
+        #         key_filename=ssh_config["key_filename"],
+        #     )
+        elif connect_type == "paramiko_sftp":
+            return ParamikoSFTPSessionStrategy(
+                ip_address=ssh_config["ip_address"],
+                username=ssh_config["username"],
+                password=ssh_config["password"],
+                key_filename=ssh_config["key_filename"],
+                # port=ssh_config["port"],
+                # timeout=ssh_config["timeout"],
+            )
         else:
-            ValueError(f"Unsupported connection type: {connect_type}")
+            return ParamikoSSHSessionStrategy(
+                ip_address=ssh_config["ip_address"],
+                username=ssh_config["username"],
+                password=ssh_config["password"],
+                key_filename=ssh_config["key_filename"],
+                # port=ssh_config["port"],
+                # timeout=ssh_config["timeout"],
+            )
 
     def _establish_connection(self, hosts: List[Any]) -> None:
         ini_host, *remaining_hosts = hosts
@@ -109,19 +97,8 @@ class SSHConnectionManager:
             if remaining_hosts:
                 for host in remaining_hosts:
                     ini_host.add(host)
-                ini_host.connect_all()
+                ini_host.start_session_all()
             else:
-                ini_host.connect()
+                ini_host.start_session()
         except Exception as e:
             raise ConnectionError(f"Failed to establish connection: {e}")
-
-
-# def session_ssh_netmiko(host_name: str, ssh_config: Dict[str, Any]):
-#     session_strategy = NetmikoSSHSessionStrategy(
-#         ip_address=ssh_config["ip_address"],
-#         username=ssh_config["username"],
-#         password=ssh_config["password"],
-#         device_type="linux",
-#         key_filename=ssh_config["key_filename"],
-#     )
-#     return LeafServer(host_name, session_strategy)

@@ -1,46 +1,30 @@
-# デザインパターンを学ぼう
+# めも
 
-- [結城浩の公式 > デザインパターンを学ぼう。](https://www.hyuki.com/dp/)
+## パッケージ管理
 
-## デザインパターンとは
+- [Python でパッケージを開発して配布する標準的な方法 2023 年編](https://qiita.com/propella/items/5cd89caee6379920d889)
 
-- 丸暗記するものではない（昔から変わらず）
-- OOPに適用される（関数型プログラミングには適用されない、ほかのパターンを見出すべき）
-- リファクタリングのゴールのモデルを示すらしい
-- GoFの語る2009年時点での実用性。
-  - Core:
-    - 11.Composite
-    - 10.Strategy
-    - 19.State
-    - 22.Command
-    - 01.Iterator
-    - 21.Proxy
-    - 03.Template Method
-    - 15.Facade
-  - Creational:
-    - 04.Factory（Factory Methodを一般化）
-    - 06.Prototype
-    - 07.Builder
-    - xx.Dependency Injection
-  - Peripheral:
-    - 08.Abstract Factory
-    - 13.Visitor
-    - 12.Decorator
-    - 16.Mediator
-    - xx.Type Object
-    - xx.Null Object
-    - xx.Extension Object
-  - Other:
-    - 23.Interpreter
-    - 20.Flyweight
-  - Delete:
-    - 02.Adapter
-    - 05.Singleton
-    - 09.Bridge
-    - 14.Chain of Responsiblity
-    - 17.Memento
-    - 18.Observer
+- [Pythonのパッケージ周りのベストプラクティスを理解する](https://www.m3tech.blog/entry/python-packaging)
 
-- [Design Patterns 15 Years Later: An Interview with Erich Gamma, Richard Helm, and Ralph Johnson \| Design Patterns 15 Years Later: An Interview with Erich Gamma, Richard Helm, and Ralph Johnson \| InformIT](https://www.informit.com/articles/article.aspx?p=1404056)
-  - 分類の変化 ※1994年時の分類: 生成、構造、ふるまい。  Peripheral:あまり使わない の意
-  - 削除6, 変更1, 追加4
+- [2024-06-04 ばんくしさんによる「ゼロから作る自作 Python Package Manager 入門」がほんとよい！ 写経を積みます](https://nikkie-ftnext.hatenablog.com/entry/vaaaaanquish-python-package-manager-diy-introduction-is-awesome)
+  - 2023-09-12 Pythonのパッケージ管理の中級者の壁を超える stapy#98
+  - https://speakerdeck.com/vaaaaanquish/pythonnopatukeziguan-li-nozhong-ji-zhe-nobi-wochao-eru-stapy-number-98
+  - PythonのPackage Managerを深く知るためのリンク集
+  - https://gist.github.com/vaaaaanquish/1ad9639d77e3a5f0e9fb0e1f8134bc06
+  - 2021-03-29 pipとpipenvとpoetryの技術的・歴史的背景とその展望
+  - https://vaaaaaanquish.hatenablog.com/entry/2021/03/29/221715
+
+## ProxyJump
+
+- [多段 ssh するなら ProxyCommand じゃなくて ProxyJump を使おう](https://zenn.dev/kariya_mitsuru/articles/ed76b4b27ac0fc)
+  - ssh_config(5) を熟読するといい?
+
+- 設定例
+
+``` text
+~/.ssh/config
+Host target-server
+    HostName target.example.com
+    ProxyJump jumphost.example.com
+    User username
+```
