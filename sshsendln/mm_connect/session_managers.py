@@ -1,14 +1,18 @@
 from .session_interfaces import SessionManager, SessionStrategy
-
+from typing import Any, Optional
 
 class TargetNode(SessionManager):
     def __init__(self, host_name: str, session_strategy: SessionStrategy):
         self.host_name = host_name
         self.session_strategy = session_strategy
         self.session = None
+        self.parent_session = None
 
-    def start_session(self) -> None:
-        self.session = self.session_strategy.start_session(self.session)
+    # def start_session(self) -> None:
+    #     self.session = self.session_strategy.start_session(self.session)
+
+    def start_session(self, parent_session: Optional[Any] = None) -> None:
+        self.session = self.session_strategy.start_session(parent_session)
 
     def end_session(self) -> None:
         self.session = self.session_strategy.end_session(self.session)
@@ -24,21 +28,22 @@ class BastionNode(SessionManager):
         self.host_name = host_name
         self.session_strategy = session_strategy
         self.session = None
-        self.next_hops = []
+        self.parent_session = None
+        self.next_nodes = []
 
-    def start_session(self) -> None:
-        self.session = self.session_strategy.start_session(self.session)
+    def start_session(self, parent_session: Optional[Any] = None) -> None:
+        self.session = self.session_strategy.start_session(parent_session)
 
     def start_session_all(self) -> None:
-        self.start_session()
-        for next_hop in self.next_hops:
-            next_hop.start_session()
+        self.start_session(self.parent_session)
+        for next_hop in self.next_nodes:
+            next_hop.start_session(self.session)
 
     def end_session(self) -> None:
         self.session = self.session_strategy.end_session(self.session)
 
     def end_session_all(self) -> None:
-        for next_hop in self.next_hops:
+        for next_hop in self.next_nodes:
             next_hop.end_session()
         self.end_session()
 
@@ -48,4 +53,5 @@ class BastionNode(SessionManager):
         return self.session_strategy.send_command(self.session, command)
 
     def add(self, session_manager: SessionManager) -> None:
-        self.next_hops.append(session_manager)
+        session_manager.set_parent(self)
+        self.next_nodes.append(session_manager)

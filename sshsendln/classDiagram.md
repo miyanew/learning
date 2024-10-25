@@ -5,16 +5,18 @@ title: mm_connect
 classDiagram
     class SessionManagerFactory {
         - ssh_configs: Dict
-        + get_hosts(host_name: str): List[SessionManager]
-        + get_host(host_name: str): SessionManager
-        - _get_bastions(host_names: List[str]): List[SessionManager]
-        - _get_bastion(host_name: str): SessionManager
-        - _get_target(host_name: str): SessionManager
-        - _get_session_strategy(host_name: str): Any
+        + create_sessions(host_name: str): List[SessionManager]
+        + create_session(host_name: str): SessionManager
+        - _create_bastions(host_names: List[str]): List[SessionManager]
+        - _create_bastion(host_name: str): SessionManager
+        - _create_target(host_name: str): SessionManager
+        - _create_session_strategy(host_name: str): Any
         - _establish_connection(hosts: List[Any]): void
     }
 
     class SessionManager {
+        - ip_address: str
+        - session_strategy: SessionStrategy
         + start_session(): void
         + end_session(): void
         + send_command(command: str): str
@@ -91,7 +93,6 @@ classDiagram
     SessionManagerFactory --> SessionManager
     SessionManager <|-- TargetNode
     SessionManager <|-- BastionNode
-    BastionNode --> SessionManager : next_hops *
     SessionManager --> SessionStrategy
     SessionStrategy <|.. PexpectSSHSessionStrategy
     SessionStrategy <|.. ParamikoSSHSessionStrategy

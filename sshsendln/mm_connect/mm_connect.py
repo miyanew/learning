@@ -8,7 +8,8 @@ from .session_managers import BastionNode, TargetNode
 # from .ssh_strategy_netmiko import NetmikoSSHSessionStrategy
 from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
 from .sftp_strategy_paramiko import ParamikoSFTPSessionStrategy
-from .ssh_strategy_pexpect import PexpectSSHSessionStrategy
+# from .ssh_strategy_pexpect import PexpectSSHSessionStrategy
+from .ssh_strategy_paramiko_intaract import ParamikoSSHIntaractSessionStrategy
 
 
 class SessionManagerFactory:
@@ -53,15 +54,16 @@ class SessionManagerFactory:
         ssh_config = self.ssh_configs[host_name]
         connect_type = ssh_config.get("connect_type","")
 
-        if connect_type == "pexpect":
-            return PexpectSSHSessionStrategy(
+        if connect_type == "paramiko_intaract":
+            return ParamikoSSHIntaractSessionStrategy(
                 ip_address=ssh_config["ip_address"],
                 username=ssh_config["username"],
-                password=ssh_config["password"],
-                password_prompt=ssh_config["password_prompt"],
-                key_filename=ssh_config["key_filename"],
+                password=ssh_config.get("password"),
+                key_filename=ssh_config.get("key_filename"),
                 command_prompt=ssh_config["command_prompt"],
                 logout_command=ssh_config["logout_command"],
+                port=ssh_config["port"],
+                timeout=ssh_config["timeout"],
             )
         # elif connect_type == "netmiko":
         #     return NetmikoSSHSessionStrategy(

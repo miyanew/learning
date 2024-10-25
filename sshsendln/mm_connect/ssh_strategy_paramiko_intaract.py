@@ -1,13 +1,15 @@
+import re
 import socket
+import time
 from io import StringIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Pattern, Union
 
 import paramiko
 
 from .exceptions import CommandError, ConnectionError
 
 
-class ParamikoSSHSessionStrategy:
+class ParamikoSSHIntaractSessionStrategy:
     def __init__(
         self,
         ip_address: str,
@@ -136,26 +138,75 @@ class ParamikoSSHSessionStrategy:
         self,
         client: paramiko.SSHClient,
         command: str,
+        prompt: Union[str, bytes] = r"[#\$>]",
         timeout: float = 30.0,
     ) -> str:
         if not client:
             raise ConnectionError("No active session to send command to")
 
         try:
-            stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
-            output = stdout.read().decode("utf-8")
-            error = stderr.read().decode("utf-8")
+            shell = client.invoke_shell()
+            shell.settimeout(timeout)
 
-            exit_status = stdout.channel.recv_exit_status()
-            if exit_status != 0 or error:
-                raise CommandError(
-                    f"Command failed with exit status {exit_status}. Error: {error}"
-                )
+            # initial_output = self._read_all(shell, self.command_prompt, timeout)
+            # print(f"Initial output: {initial_output}") # デバッグ用
 
-            return output.strip()
+            shell.send(command.encode("utf-8") + b"\n")
+            output = self._read_all(shell, prompt, timeout)
+
+            return self._clean_command_output(output, command)
         except paramiko.SSHException as e:
             raise CommandError(f"SSH error occurred: {e}") from e
         except socket.timeout as e:
             raise ConnectionError(f"Connection timed out") from e
         except Exception as e:
             raise CommandError(f"executing the command error occurred: {e}") from e
+
+    def _read_all(
+        self,
+        shell: paramiko.Channel,
+        prompt: Union[str, bytes],
+        timeout: float = 30.0,
+        buffer_size: int = 1024,
+    ) -> str:
+        output: str = ""
+        start_time: float = time.time()
+        prompt_str: str = prompt if isinstance(prompt, str) else prompt.decode("utf-8")
+        prompt_pattern: Pattern[str] = re.compile(prompt_str)
+        more_pattern = re.compile(r"\x1b\[7m--More--\x1b\[27m")
+
+        while True:
+            if shell.recv_ready():
+                chunk = shell.recv(buffer_size).decode("utf-8")
+                output += chunk
+                if more_pattern.search(chunk):
+                    shell.send(" ".encode("utf-8"))  # スペースを送信して次ページを表示
+                elif prompt_pattern.search(output):
+                    break
+            elif time.time() - start_time > timeout:
+                break
+            else:
+                time.sleep(0.1)
+        return output
+
+    def _clean_command_output(self, output: str, command: str) -> str:
+        """コマンド実行結果から不要な行を除去する
+
+        Args:
+            output: コマンド実行の生出力
+            command: 実行したコマンド
+
+        Returns:
+            整形済みの出力テキスト
+        """
+        lines = output.splitlines()
+
+        # コマンド行を除去
+        if lines and lines[0].strip() == command.strip():
+            lines = lines[1:]
+
+        # 最後のプロンプト行を除去
+        if lines and re.match(r"[#\$>]", lines[-1]):
+            lines = lines[:-1]
+
+        return "\n".join(lines).strip()
