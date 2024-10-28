@@ -71,9 +71,9 @@ class SessionManagerFactory:
                 username=ssh_config["username"],
                 password=ssh_config["password"],
                 bastion_user=ssh_config["bastion_user"],
-                logout_command=ssh_config.get["logout_command"],
-                command_prompt=ssh_config.get["command_prompt"],
-                timeout=ssh_config["timeout"],
+                logout_command=ssh_config.get("logout_command"),
+                command_prompt=ssh_config.get("command_prompt"),
+                timeout=ssh_config.get("timeout"),
             )
         elif connect_type == "paramiko_sftp":
             return ParamikoSFTPSessionStrategy(

@@ -1,10 +1,11 @@
 import re
 import socket
 import time
-# from io import StringIO
-from typing import Any, Dict, Optional, Pattern, Union
+
+from typing import Optional, Pattern, Union
 
 import paramiko
+from paramiko.channel import Channel
 
 from .exceptions import CommandError, ConnectionError
 
@@ -36,42 +37,36 @@ class ParamikoSSHSessionStrategyPod:
             raise ValueError("No active session to disconnect from")
 
         try:
-            # client = paramiko.SSHClient()
-            # client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
             shell = parent_client.invoke_shell()
             shell.settimeout(self.timeout)
+            prompt = r"[#\$>]"
 
             command = f"oc login -u admin -p `cat /home/{self.bastion_user}/`"
-            shell.send(command.encode("utf-8") + b"\n")
-            prompt = ">"
-            # session.prompt()
+            shell.send(command.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, prompt)
 
             command = f"_fetch_running_pod_name({self.hostname})"
-            shell.send(command.encode("utf-8") + b"\n")
-            prompt = ">"
-            pod_name = self._read_all(shell, prompt, self.timeout)
-            # pod_name = self._clean_command_output(pod_name, command)
+            shell.send(command.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, prompt)
+
+            resp = self._read_all(shell, prompt, self.timeout)
+            pod_name = self._clean_command_output(resp, command)
 
             command = f"oc exec -it -n {self.hostname} {pod_name} -- "
-            shell.send(command.encode("utf-8") + b"\n")
-            prompt = ">"
-            # session.expect("USERNAME :")
+            shell.send(command.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, "USERNAME :")
 
-            command = f"{self.username}"
-            shell.send(command.encode("utf-8") + b"\n")
-            prompt = ">"
-            # session.expect("PASSWORD :")
+            shell.send(self.username.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, "PASSWORD :")
 
-            command = f"{self.password}"
-            shell.send(command.encode("utf-8") + b"\n")
-            prompt = ">"
-            # session.expect(rf"\[{self.hostname}\]")
+            shell.send(self.password.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, rf"\[{self.hostname}\]")
 
-            # command = f"inhibit msg"
-            # shell.send(command.encode("utf-8") + b"\n")
-            # prompt = ">"
-            # session.expect(rf"\[{self.hostname}\]")
+            shell.send("hoge;".encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, "PASSWORD :")
+
+            shell.send(self.password.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, rf"\[{self.hostname}\]")
 
             return parent_client
         except paramiko.AuthenticationException as e:
@@ -82,6 +77,19 @@ class ParamikoSSHSessionStrategyPod:
             raise ConnectionError(f"Connection timed out") from e
         except Exception as e:
             raise Exception(f"Failed to establish SSH connection: {e}") from e
+
+    def wait_for_prompt(self, shell: Channel, prompt: str, timeout: float = 30) -> str:
+        output = ""
+        start_time = time.time()
+        while True:
+            if shell.recv_ready():
+                chunk = shell.recv(1024).decode("utf-8")
+                output += chunk
+                if re.search(prompt, output):
+                    return output
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Timeout waiting for prompt: {prompt}")
+            time.sleep(0.1)
 
     def _read_all(
         self,
@@ -159,13 +167,12 @@ class ParamikoSSHSessionStrategyPod:
             shell = client.invoke_shell()
             shell.settimeout(timeout)
 
-            # initial_output = self._read_all(shell, self.command_prompt, timeout)
-            # print(f"Initial output: {initial_output}") # デバッグ用
+            shell.send(command.encode("utf-8") + b"\r\n")
+            self.wait_for_prompt(shell, rf"\[{self.hostname}\]") # 仮コード
 
-            shell.send(command.encode("utf-8") + b"\n")
-            output = self._read_all(shell, prompt, timeout)
+            resp = self._read_all(shell, prompt, timeout)
 
-            return self._clean_command_output(output, command)
+            return self._clean_command_output(resp, command)
         except paramiko.SSHException as e:
             raise CommandError(f"SSH error occurred: {e}") from e
         except socket.timeout as e:
