@@ -4,12 +4,12 @@ from typing import Any, List
 from .config_loader import load_json_file
 from .session_interfaces import SessionManager, SessionStrategy
 from .session_managers import BastionNode, TargetNode
+from .sftp_strategy_paramiko import ParamikoSFTPSessionStrategy
 
 # from .ssh_strategy_netmiko import NetmikoSSHSessionStrategy
 from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
-from .sftp_strategy_paramiko import ParamikoSFTPSessionStrategy
-# from .ssh_strategy_pexpect import PexpectSSHSessionStrategy
 from .ssh_strategy_paramiko_intaract import ParamikoSSHIntaractSessionStrategy
+from .ssh_strategy_paramiko_pod import ParamikoSSHSessionStrategyPod
 
 
 class SessionManagerFactory:
@@ -52,7 +52,7 @@ class SessionManagerFactory:
 
     def _create_session_strategy(self, host_name: str) -> Any:
         ssh_config = self.ssh_configs[host_name]
-        connect_type = ssh_config.get("connect_type","")
+        connect_type = ssh_config.get("connect_type", "")
 
         if connect_type == "paramiko_intaract":
             return ParamikoSSHIntaractSessionStrategy(
@@ -65,14 +65,16 @@ class SessionManagerFactory:
                 port=ssh_config["port"],
                 timeout=ssh_config["timeout"],
             )
-        # elif connect_type == "netmiko":
-        #     return NetmikoSSHSessionStrategy(
-        #         ip_address=ssh_config["ip_address"],
-        #         username=ssh_config["username"],
-        #         password=ssh_config["password"],
-        #         device_type="linux",
-        #         key_filename=ssh_config["key_filename"],
-        #     )
+        elif connect_type == "paramiko_pod":
+            return ParamikoSSHSessionStrategyPod(
+                hostname=ssh_config["hostname"],
+                username=ssh_config["username"],
+                password=ssh_config["password"],
+                bastion_user=ssh_config["bastion_user"],
+                logout_command=ssh_config.get["logout_command"],
+                command_prompt=ssh_config.get["command_prompt"],
+                timeout=ssh_config["timeout"],
+            )
         elif connect_type == "paramiko_sftp":
             return ParamikoSFTPSessionStrategy(
                 ip_address=ssh_config["ip_address"],
