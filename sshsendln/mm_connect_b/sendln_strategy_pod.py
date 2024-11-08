@@ -1,8 +1,8 @@
-import paramiko
 import socket
+import paramiko
 
-from typing import Optional
 from .exceptions import CommandError, ConnectionError
+
 
 class SendLineStrategyPod:
     def __init__(self, session_strategy):
@@ -12,23 +12,20 @@ class SendLineStrategyPod:
         self,
         shell: paramiko.Channel,
         command: str,
-        expected_str: str,
-        timeout: float = 30.0,
+        timeout: float,
     ) -> str:
         if not shell:
             raise ConnectionError("No active session to send command to")
-        
-        # if not expected_str:
-        #     prompt = rf"\[{self.hostname}\]"
-        #     expected_str = prompt
+
+        prompt = rf"\[{self.session_strategy.hostname}\]"
 
         try:
             shell.settimeout(timeout)
 
-            shell.send(f"{command}\r\n".encode("utf-8"))
-            resp = self.session_strategy._read_until_match(shell, expected_str, command)
+            self.session_strategy.send_line(shell, command)
+            resp = self.session_strategy.read_until_match(shell, prompt, command)
 
-            return self._format_command_response(resp)
+            return self._format_response(resp)
         except paramiko.SSHException as e:
             raise CommandError(f"SSH error occurred: {e}") from e
         except socket.timeout as e:
@@ -36,7 +33,7 @@ class SendLineStrategyPod:
         except Exception as e:
             raise CommandError(f"executing the command error occurred: {e}") from e
 
-    def _format_command_response(self, resp: str) -> str:
+    def _format_response(self, resp: str) -> str:
         lines = resp.splitlines()
         result = "\n".join(lines[1:-1])
         return result.strip()

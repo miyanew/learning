@@ -1,6 +1,5 @@
-# from .session_interfaces import SessionManager, SessionStrategy
 from abc import ABC, abstractmethod
-from typing import Optional, List, Any
+from typing import Any, List, Optional
 
 
 class SessionManager(ABC):
@@ -44,19 +43,16 @@ class TargetNode(SessionManager):
         self.session = None
         self.parent_session = None
 
-    # def start_session(self) -> None:
-    #     self.session = self.session_strategy.start_session(self.session)
-
     def start_session(self, parent_session: Optional[Any] = None) -> None:
         self.session = self.session_strategy.start_session(parent_session)
 
     def end_session(self) -> None:
         self.session = self.session_strategy.end_session(self.session)
 
-    def send_command(self, command: str, expected_str: Optional[str]) -> str:
+    def send_command(self, command: str, timeout: float = 30.0) -> str:
         if self.session is None:
             raise ConnectionError("Not connected")
-        return self.send_command_strategy.send_command(self.session, command, expected_str)
+        return self.send_command_strategy.send_command(self.session, command, timeout)
 
 
 class BastionNode(SessionManager):
