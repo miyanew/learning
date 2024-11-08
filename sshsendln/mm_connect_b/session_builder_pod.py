@@ -1,7 +1,8 @@
-from .abstract_session_builder import SessionBuilder
+from .abstract_builder import SessionBuilder
 from .abstract_session_manager import SessionManager, BastionNode, TargetNode
 from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
 from .ssh_strategy_paramiko_pod import ParamikoSSHSessionStrategyPod
+from .sendln_strategy_pod import SendLineStrategyPod
 from typing import List
 
 
@@ -19,7 +20,11 @@ class SessionBuilderPod(SessionBuilder):
     def get_config(self):
         return self.ssh_configs[self.host_name]
 
-    def create_bastions(self):
+    def create_hosts(self):
+        self._create_bastions()
+        self._create_target()
+
+    def _create_bastions(self):
         host_names = self.host_config.get("bastions", [])
         self.hosts = [self._create_bastion(bastion) for bastion in host_names]
 
@@ -34,7 +39,7 @@ class SessionBuilderPod(SessionBuilder):
 
         return BastionNode(host_name, session_strategy)
 
-    def create_target(self):
+    def _create_target(self):
         ssh_config = self.ssh_configs[self.host_name]
         session_strategy = ParamikoSSHSessionStrategyPod(
             hostname=self.host_name,
@@ -43,8 +48,9 @@ class SessionBuilderPod(SessionBuilder):
             bastion_user=ssh_config.get("bastion_user"),
             timeout=ssh_config.get("timeout"),
         )
+        send_line_strategy = SendLineStrategyPod(session_strategy)
 
-        self.hosts.append(TargetNode(self.host_name, session_strategy))
+        self.hosts.append(TargetNode(self.host_name, session_strategy, send_line_strategy))
 
     def establish_connection(self) -> None:
         ini_host, *remaining_hosts = self.hosts

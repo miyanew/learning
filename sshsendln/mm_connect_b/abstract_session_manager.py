@@ -37,9 +37,10 @@ class SessionManager(ABC):
 
 
 class TargetNode(SessionManager):
-    def __init__(self, host_name: str, session_strategy):
+    def __init__(self, host_name: str, session_strategy, send_command_strategy):
         self.host_name = host_name
         self.session_strategy = session_strategy
+        self.send_command_strategy = send_command_strategy
         self.session = None
         self.parent_session = None
 
@@ -52,10 +53,10 @@ class TargetNode(SessionManager):
     def end_session(self) -> None:
         self.session = self.session_strategy.end_session(self.session)
 
-    def send_command(self, command: str) -> str:
+    def send_command(self, command: str, expected_str: Optional[str]) -> str:
         if self.session is None:
             raise ConnectionError("Not connected")
-        return self.session_strategy.send_command(self.session, command)
+        return self.send_command_strategy.send_command(self.session, command, expected_str)
 
 
 class BastionNode(SessionManager):

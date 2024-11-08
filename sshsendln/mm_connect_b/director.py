@@ -1,4 +1,4 @@
-from .abstract_session_builder import SessionBuilder
+from .abstract_builder import SessionBuilder
 
 
 class Director:
@@ -7,6 +7,5 @@ class Director:
 
     def construct(self) -> None:
         self.builder.get_config()
-        self.builder.create_bastions()
-        self.builder.create_target()
+        self.builder.create_hosts()
         self.builder.establish_connection()

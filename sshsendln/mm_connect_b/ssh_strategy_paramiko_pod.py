@@ -5,7 +5,7 @@ import time
 from typing import Optional
 
 import paramiko
-from .exceptions import CommandError, ConnectionError
+from .exceptions import ConnectionError
 
 
 class ParamikoSSHSessionStrategyPod:
@@ -15,13 +15,13 @@ class ParamikoSSHSessionStrategyPod:
         username: str,
         password: str,
         bastion_user: str,
-        timeout: float = 30,
+        timeout: float,
     ):
         self.hostname = hostname
         self.username = username
         self.password = password
         self.bastion_user = bastion_user
-        self.timeout = timeout
+        self.timeout = timeout if timeout else 30.0
 
     def start_session(
         self,
@@ -31,34 +31,34 @@ class ParamikoSSHSessionStrategyPod:
             raise ValueError("No active session to disconnect from")
 
         try:
+            prompt_bastion = r"\[.+@.+\]\$"
             shell = parent_client.invoke_shell()
             shell.settimeout(self.timeout)
-            prompt = r"[#\$>]"
 
             command = f"oc login -u admin -p `cat /home/{self.bastion_user}/`"
             self._send_line(shell, command)
-            self._read_until_match(shell, prompt, command)
 
+            self._read_until_match(shell, prompt_bastion, command)
             command = f"oc get pods -n {self.hostname} | grep userinterface | grep Running | cut -d' ' -f1 | head -1"
             self._send_line(shell, command)
-            resp = self._read_until_match(shell, prompt, command)
-
+            resp = self._read_until_match(shell, prompt_bastion, command)
             pod_name = [
-                ln.strip() for ln in resp.splitlines() if not re.search(prompt, ln)
+                ln.strip()
+                for ln in resp.splitlines()
+                if not re.search(prompt_bastion, ln)
             ][-1]
+
             command = f"oc exec -it -n {self.hostname} {pod_name} -- /apps/pkg --c"
             self._send_line(shell, command)
             self._read_until_match(shell, "USERNAME :")
-
             self._send_line(shell, self.username)
             self._read_until_match(shell, "PASSWORD :")
-
             self._send_line(shell, self.password)
-            self._read_until_match(shell, rf"\[{self.hostname}\]")
 
-            self._send_line(shell, "hoge;")
+            prompt_host = rf"\[{self.hostname}\]"
+            self._read_until_match(shell, prompt_host)
+            self._send_line(shell, "INH-MSG:ALL;")
             self._read_until_match(shell, "PASSWORD :")
-
             self._send_line(shell, self.password)
             self._read_until_match(shell, rf"\[{self.hostname}\]")
 
@@ -81,27 +81,28 @@ class ParamikoSSHSessionStrategyPod:
         expected_str: str,
         command: Optional[str] = None,
         timeout: float = 30.0,
-        buffer_size: int = 4096,
+        buffer_size: int = 1024,
     ) -> str:
-        resp = b""
+        resp = ""
         start_time: float = time.time()
 
         echo_back_pattern = (
-            re.compile(re.escape(command).encode("utf-8")) if command else None
+            re.compile(re.escape(command)) if command else None
         )
         rtrv_cmd_pattern = (
-            re.compile(re.escape(command).encode("utf-8"))
+            re.compile(re.escape(command))
             if command and ("RTRV-" in command)
             else None
         )
 
-        expected_pattern = re.compile(expected_str.encode("utf-8"))
+        expected_pattern = re.compile(expected_str)
         expected_str_found = False
         sleep_count = 0
 
         while True:
             if shell.recv_ready():
-                resp += self._receive_response(shell, buffer_size, start_time, timeout)
+                chunk = shell.recv(buffer_size)
+                resp += chunk.decode("utf-8")
 
                 if expected_pattern.search(resp):
                     if echo_back_pattern:
@@ -110,31 +111,21 @@ class ParamikoSSHSessionStrategyPod:
                             continue
 
                     if rtrv_cmd_pattern:
-                        if rtrv_cmd_pattern.search(resp) and (b"COMPLD" not in resp):
+                        if rtrv_cmd_pattern.search(resp) and (" : COMPLD" not in resp):
                             continue
 
-                    return resp.decode("utf-8", errors="replace")
+                        if not f"[{self.hostname}]" in resp.splitlines()[-1]:
+                            continue
+
+                    break
             elif time.time() - start_time > timeout:
-                raise TimeoutError(f"Timeout waiting for prompts: {expected_str}")
+                raise TimeoutError(f"Timeout waiting for: {expected_str}")
             else:
                 time.sleep(0.1)
                 sleep_count += 1
                 if sleep_count % 5 == 0:
                     shell.send(b" ")
 
-    def _receive_response(
-        self,
-        shell: paramiko.Channel,
-        buffer_size: int,
-        start_time: float,
-        timeout: float,
-    ) -> bytes:
-        resp = b""
-        while True:
-            chunk = shell.recv(buffer_size)
-            resp += chunk
-            if len(chunk) < buffer_size or time.time() - start_time > timeout:
-                break
         return resp
 
     def end_session(self, client: paramiko.SSHClient) -> None:
@@ -150,23 +141,35 @@ class ParamikoSSHSessionStrategyPod:
         except Exception as e:
             raise ConnectionError(f"Failed to close SSH connection: {e}") from e
 
-    def send_command(
-        self,
-        shell: paramiko.Channel,
-        command: str,
-        timeout: float = 30.0,
-    ) -> str:
-        if not shell:
-            raise ConnectionError("No active session to send command to")
+    # def send_command(
+    #     self,
+    #     shell: paramiko.Channel,
+    #     command: str,
+    #     timeout: float = 30.0,
+    #     expected_str: Optional[str] = None,
+    # ) -> str:
+    #     if not shell:
+    #         raise ConnectionError("No active session to send command to")
+        
+    #     if not expected_str:
+    #         prompt = rf"\[{self.hostname}\]"
+    #         expected_str = prompt
 
-        try:
-            prompt = rf"\[{self.hostname}\]"
-            shell.settimeout(timeout)
-            self._send_line(shell, command)
-            return self._read_until_match(shell, prompt, command)
-        except paramiko.SSHException as e:
-            raise CommandError(f"SSH error occurred: {e}") from e
-        except socket.timeout as e:
-            raise ConnectionError(f"Connection timed out: {e}") from e
-        except Exception as e:
-            raise CommandError(f"executing the command error occurred: {e}") from e
+    #     try:
+    #         shell.settimeout(timeout)
+
+    #         shell.send(f"{command}\r\n".encode("utf-8"))
+    #         resp = self._read_until_match(shell, expected_str, command)
+
+    #         return self._format_command_response(resp)
+    #     except paramiko.SSHException as e:
+    #         raise CommandError(f"SSH error occurred: {e}") from e
+    #     except socket.timeout as e:
+    #         raise ConnectionError(f"Connection timed out: {e}") from e
+    #     except Exception as e:
+    #         raise CommandError(f"executing the command error occurred: {e}") from e
+
+    # def _format_command_response(self, resp: str) -> str:
+    #     lines = resp.splitlines()
+    #     result = "\n".join(lines[1:-1])
+    #     return result.strip()

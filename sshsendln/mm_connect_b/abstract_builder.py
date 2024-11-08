@@ -10,11 +10,7 @@ class SessionBuilder(ABC):
         pass
 
     @abstractmethod
-    def create_bastions(self):
-        pass
-
-    @abstractmethod
-    def create_target(self):
+    def create_hosts(self):
         pass
 
     @abstractmethod
