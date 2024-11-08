@@ -1,5 +1,6 @@
 from .abstract_session_builder import SessionBuilder
 from .abstract_session_manager import SessionManager, BastionNode, TargetNode
+from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
 from .ssh_strategy_paramiko_pod import ParamikoSSHSessionStrategyPod
 from typing import List
 
@@ -23,22 +24,27 @@ class SessionBuilderPod(SessionBuilder):
         self.hosts = [self._create_bastion(bastion) for bastion in host_names]
 
     def _create_bastion(self, host_name: str):
-        session_strategy = self._create_session_strategy(host_name)
+        ssh_config = self.ssh_configs[host_name]
+        session_strategy = ParamikoSSHSessionStrategy(
+            ip_address=ssh_config["ip_address"],
+            username=ssh_config["username"],
+            password=ssh_config["password"],
+            key_filename=ssh_config["key_filename"],
+        )
+
         return BastionNode(host_name, session_strategy)
 
     def create_target(self):
-        session_strategy = self._create_session_strategy(self.host_name)
-        self.hosts.append(TargetNode(self.host_name, session_strategy))
-
-    def _create_session_strategy(self, host_name: str):
-        ssh_config = self.ssh_configs[host_name]
-        return ParamikoSSHSessionStrategyPod(
-            hostname=host_name,
+        ssh_config = self.ssh_configs[self.host_name]
+        session_strategy = ParamikoSSHSessionStrategyPod(
+            hostname=self.host_name,
             username=ssh_config["username"],
             password=ssh_config["password"],
             bastion_user=ssh_config.get("bastion_user"),
             timeout=ssh_config.get("timeout"),
         )
+
+        self.hosts.append(TargetNode(self.host_name, session_strategy))
 
     def establish_connection(self) -> None:
         ini_host, *remaining_hosts = self.hosts
