@@ -28,3 +28,5 @@ Host target-server
     ProxyJump jumphost.example.com
     User username
 ```
+
+- [ProxyCommand support — Paramiko documentation](https://docs.paramiko.org/en/stable/api/proxy.html)
