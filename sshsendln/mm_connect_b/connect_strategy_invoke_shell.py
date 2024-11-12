@@ -1,7 +1,7 @@
 import re
 import socket
 import time
-from io import StringIO
+# from io import StringIO
 from typing import Optional
 
 import paramiko
@@ -66,17 +66,17 @@ class InvokeShellStrategy:
         except Exception as e:
             raise Exception(f"Failed to establish SSH connection: {e}") from e
 
-    def _get_remote_key(
-        self,
-        parent_client: paramiko.SSHClient,
-        key_path: str,
-    ) -> paramiko.RSAKey:
-        stdin, stdout, stderr = parent_client.exec_command(f"cat {key_path}")
-        private_key_content = stdout.read().decode()
-        error = stderr.read().decode()
-        if error:
-            raise Exception(f"Failed to read private key from remote host: {error}")
-        return paramiko.RSAKey.from_private_key(StringIO(private_key_content))
+    # def _get_remote_key(
+    #     self,
+    #     parent_client: paramiko.SSHClient,
+    #     key_path: str,
+    # ) -> paramiko.RSAKey:
+    #     stdin, stdout, stderr = parent_client.exec_command(f"cat {key_path}")
+    #     private_key_content = stdout.read().decode()
+    #     error = stderr.read().decode()
+    #     if error:
+    #         raise Exception(f"Failed to read private key from remote host: {error}")
+    #     return paramiko.RSAKey.from_private_key(StringIO(private_key_content))
 
     def end_session(self, client: paramiko.SSHClient) -> None:
         """SSHセッションを切断します"""

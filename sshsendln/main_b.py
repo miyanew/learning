@@ -5,7 +5,7 @@ from mm_connect_b.config_loader import load_json_file
 from mm_connect_b.director import Director
 from mm_connect_b.build_pod_session import PodSessionBuilder
 from mm_connect_b.build_interactive_session import InteractiveSessionBuilder
-# from mm_connect_b.session_builder_nonintaract import SessionBuilderNonintaract
+from mm_connect_b.build_general_session import GeneralSessionBuilder
 
 CONFIG_NAME = "ssh_host.json"
 
@@ -29,7 +29,10 @@ def main(opts: argparse.Namespace) -> None:
         director.construct()
         host = builder.get_instance()
     else:
-        pass
+        builder = GeneralSessionBuilder(opts.host, ssh_configs) 
+        director = Director(builder)
+        director.construct()
+        host = builder.get_instance()
 
     print(f"==={host.host_name}===")
     print(host.send_command(opts.command))
