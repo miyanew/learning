@@ -3,8 +3,8 @@ import os
 
 from mm_connect_b.config_loader import load_json_file
 from mm_connect_b.director import Director
-from mm_connect_b.session_builder_pod import SessionBuilderPod
-# from mm_connect_b.session_builder_intaract import SessionBuilderIntaract
+from mm_connect_b.build_pod_session import PodSessionBuilder
+from mm_connect_b.build_interactive_session import InteractiveSessionBuilder
 # from mm_connect_b.session_builder_nonintaract import SessionBuilderNonintaract
 
 CONFIG_NAME = "ssh_host.json"
@@ -16,21 +16,23 @@ def main(opts: argparse.Namespace) -> None:
 
     host_config = ssh_configs[opts.host]
     connect_type = host_config.get("connect_type", "")
+    host = None
 
     if connect_type == "paramiko_pod":
-        builder = SessionBuilderPod(opts.host, ssh_configs) 
+        builder = PodSessionBuilder(opts.host, ssh_configs) 
         director = Director(builder)
         director.construct()
         host = builder.get_instance_pod()
     elif connect_type == "paramiko_intaract":
-        pass
+        builder = InteractiveSessionBuilder(opts.host, ssh_configs) 
+        director = Director(builder)
+        director.construct()
+        host = builder.get_instance()
     else:
         pass
 
-    # return host
-
-    # print(f"==={host.host_name}===")
-    # print(host.send_command(opts.command))
+    print(f"==={host.host_name}===")
+    print(host.send_command(opts.command))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(allow_abbrev=False)

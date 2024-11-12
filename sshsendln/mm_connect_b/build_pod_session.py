@@ -1,13 +1,15 @@
 from typing import List
 
 from .abstract_builder import SessionBuilder
-from .abstract_session_manager import BastionNode, SessionManager, TargetNode
+from .abstract_session_manager import SessionManager
+from .connect_strategy_new_session import NewSessionStrategy
+from .connect_strategy_oc_login import OcLoginStrategy
 from .sendln_strategy_pod import SendLineStrategyPod
-from .ssh_strategy_paramiko import ParamikoSSHSessionStrategy
-from .ssh_strategy_paramiko_pod import ParamikoSSHSessionStrategyPod
+from .session_manager_bastion import BastionNode
+from .session_manager_target import TargetNode
 
 
-class SessionBuilderPod(SessionBuilder):
+class PodSessionBuilder(SessionBuilder):
     def __init__(self, host_name, ssh_configs):
         super().__init__(host_name)
         self.ssh_configs = ssh_configs
@@ -31,7 +33,8 @@ class SessionBuilderPod(SessionBuilder):
 
     def _create_bastion(self, host_name: str):
         ssh_config = self.ssh_configs[host_name]
-        session_strategy = ParamikoSSHSessionStrategy(
+        session_strategy = NewSessionStrategy(
+            host_name=host_name,
             ip_address=ssh_config["ip_address"],
             username=ssh_config["username"],
             password=ssh_config["password"],
@@ -42,7 +45,7 @@ class SessionBuilderPod(SessionBuilder):
 
     def _create_target(self):
         ssh_config = self.ssh_configs[self.host_name]
-        session_strategy = ParamikoSSHSessionStrategyPod(
+        session_strategy = OcLoginStrategy(
             hostname=self.host_name,
             username=ssh_config["username"],
             password=ssh_config["password"],

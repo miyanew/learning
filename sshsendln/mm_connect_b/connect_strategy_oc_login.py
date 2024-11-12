@@ -7,8 +7,10 @@ import paramiko
 
 from .exceptions import ConnectionError
 
+DEFAULT_TIMEOUT = 30.0
 
-class ParamikoSSHSessionStrategyPod:
+
+class OcLoginStrategy:
     def __init__(
         self,
         hostname: str,
@@ -21,7 +23,7 @@ class ParamikoSSHSessionStrategyPod:
         self.username = username
         self.password = password
         self.bastion_user = bastion_user
-        self.timeout = timeout if timeout else 30.0
+        self.timeout = timeout if timeout else DEFAULT_TIMEOUT
 
     def start_session(
         self,
@@ -80,11 +82,11 @@ class ParamikoSSHSessionStrategyPod:
         shell: paramiko.Channel,
         expected_str: str,
         command: Optional[str] = None,
-        timeout: float = 30.0,
+        timeout: float = DEFAULT_TIMEOUT,
         buffer_size: int = 1024,
     ) -> str:
         resp = ""
-        start_time: float = time.time()
+        start_time = time.time()
 
         echo_back_pattern = re.compile(re.escape(command)) if command else None
         rtrv_cmd_pattern = (

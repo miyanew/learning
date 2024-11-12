@@ -6,27 +6,27 @@ import paramiko
 
 from .exceptions import CommandError, ConnectionError
 
+DEFAULT_TIMEOUT = 30.0
 
-class ParamikoSSHSessionStrategy:
+
+class NewSessionStrategy:
     def __init__(
         self,
+        host_name: str,
         ip_address: str,
         username: str,
         password: str,
         key_filename: str,
-        logout_command: str = "exit",
-        command_prompt: str = "$",
-        port: int = 22,
-        timeout: float = 30,
+        port: Optional[int] = None,
+        timeout: Optional[float] = None,
     ):
+        self.host_name = host_name
         self.ip_address = ip_address
         self.username = username
         self.password = password
         self.key_filename = key_filename
-        self.logout_command = logout_command
-        self.command_prompt = command_prompt
-        self.port = port
-        self.timeout = timeout
+        self.port = port if port else 22
+        self.timeout = timeout if timeout else DEFAULT_TIMEOUT
 
     def start_session(
         self,
@@ -74,11 +74,11 @@ class ParamikoSSHSessionStrategy:
             client.connect(**connect_kwargs)
             return client
         except paramiko.AuthenticationException as e:
-            raise ConnectionError(f"Authentication failed") from e
+            raise ConnectionError(f"Authentication failed: {e}") from e
         except paramiko.SSHException as e:
-            raise ConnectionError(f"SSH error occurred") from e
+            raise ConnectionError(f"SSH error occurred: {e}") from e
         except socket.timeout as e:
-            raise ConnectionError(f"Connection timed out") from e
+            raise ConnectionError(f"Connection timed out: {e}") from e
         except Exception as e:
             raise Exception(f"Failed to establish SSH connection: {e}") from e
 
@@ -100,6 +100,7 @@ class ParamikoSSHSessionStrategy:
         transport = parent_client.get_transport()
         if transport is None:
             raise ConnectionError("Parent client transport is not available")
+
         try:
             dest_addr = (self.ip_address, self.port)
             local_addr = ("local_host", 0)
@@ -112,7 +113,7 @@ class ParamikoSSHSessionStrategy:
         parent_client: paramiko.SSHClient,
         key_path: str,
     ) -> paramiko.RSAKey:
-        stdin, stdout, stderr = parent_client.exec_command(f"cat {key_path}")
+        _, stdout, stderr = parent_client.exec_command(f"cat {key_path}")
         private_key_content = stdout.read().decode()
         error = stderr.read().decode()
         if error:
@@ -136,13 +137,13 @@ class ParamikoSSHSessionStrategy:
         self,
         client: paramiko.SSHClient,
         command: str,
-        timeout: float = 30.0,
+        timeout: float = DEFAULT_TIMEOUT,
     ) -> str:
         if not client:
             raise ConnectionError("No active session to send command to")
 
         try:
-            stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
+            _, stdout, stderr = client.exec_command(command, timeout=timeout)
             output = stdout.read().decode("utf-8")
             error = stderr.read().decode("utf-8")
 
@@ -156,6 +157,6 @@ class ParamikoSSHSessionStrategy:
         except paramiko.SSHException as e:
             raise CommandError(f"SSH error occurred: {e}") from e
         except socket.timeout as e:
-            raise ConnectionError(f"Connection timed out") from e
+            raise ConnectionError(f"Connection timed out: {e}") from e
         except Exception as e:
             raise CommandError(f"executing the command error occurred: {e}") from e

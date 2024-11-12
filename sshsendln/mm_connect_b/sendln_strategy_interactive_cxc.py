@@ -5,7 +5,7 @@ import paramiko
 from .exceptions import CommandError, ConnectionError
 
 
-class SendLineStrategyPod:
+class InteractiveCxcStrategy:
     def __init__(self, session_strategy):
         self.session_strategy = session_strategy
 
@@ -18,13 +18,13 @@ class SendLineStrategyPod:
         if not shell:
             raise ConnectionError("No active session to send command to")
 
-        prompt = rf"\[{self.session_strategy.hostname}\]"
+        prompt = self.session_strategy.host_name
 
         try:
             shell.settimeout(timeout)
 
-            self.session_strategy.send_line(shell, command)
-            resp = self.session_strategy.read_until_match(shell, prompt, command)
+            shell.send(command.encode("utf-8") + b"\r\n")
+            resp = self.session_strategy._read_all(shell, prompt)
 
             return self._format_response(resp)
         except paramiko.SSHException as e:
