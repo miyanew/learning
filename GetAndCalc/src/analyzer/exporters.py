@@ -1,5 +1,6 @@
+import os
+import json
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Dict, List
 
 
@@ -27,6 +28,13 @@ class CSVFormatter(StatisticsFormatter):
         return "\n".join(lines)
 
 
+class JSONFormatter(StatisticsFormatter):
+    """JSON形式でフォーマットするクラス"""
+
+    def format(self, statistics: List[Dict]) -> str:
+        return json.dumps(statistics, ensure_ascii=False, indent=2)
+
+
 class StatisticsExporter:
     """統計結果のエクスポートを担当するクラス"""
 
@@ -36,4 +44,8 @@ class StatisticsExporter:
     def export(self, statistics: List[Dict], output_path: str) -> None:
         """統計結果をファイルに出力"""
         formatted_data = self.formatter.format(statistics)
-        Path(output_path).write_text(formatted_data, encoding="utf-8")
+        directory = os.path.dirname(output_path)
+        os.makedirs(directory, exist_ok=True)
+
+        with open(output_path, "w", encoding="utf-8") as file:
+            file.write(formatted_data)

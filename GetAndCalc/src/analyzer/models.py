@@ -1,12 +1,12 @@
 import csv
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterator, List, Set, TextIO, Tuple
+from typing import DefaultDict, Dict, Iterator, List, TextIO, Tuple
 
 SUCCESS_CASE = "PROC_SUCCESS"
 
 
-class RequestRecord:
-    """リクエストの1レコードを表現するデータクラス"""
+class AggregationRecord:
+    """集計対象の1レコードを表現するデータクラス"""
 
     def __init__(self, app: str, cc: str, rc: str):
         self.app = app
@@ -15,22 +15,22 @@ class RequestRecord:
 
 
 class RequestReader:
-    """CSVからリクエストレコードを読み出すクラス"""
-
-    @staticmethod
-    def from_csv(file_path: str) -> Iterator[RequestRecord]:
-        """CSVファイルからリクエストレコードのイテレータを生成"""
-        with open(file_path, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for line in reader:
-                yield RequestRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
+    # """CSVからリクエストレコードを読み出すクラス"""
 
     # @staticmethod
-    # def from_file(file: TextIO) -> Iterator[RequestRecord]:
-    #     """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
-    #     reader = csv.DictReader(file)
-    #     for line in reader:
-    #         yield RequestRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
+    # def from_csv(file_path: str) -> Iterator[AggregationRecord]:
+    #     """CSVファイルからリクエストレコードのイテレータを生成"""
+    #     with open(file_path, "r", encoding="utf-8") as f:
+    #         reader = csv.DictReader(f)
+    #         for line in reader:
+    #             yield AggregationRecord(app=line["APP"], cc=line["CC"], rc=line["RC"])
+
+    @staticmethod
+    def from_file(file: TextIO) -> Iterator[AggregationRecord]:
+        """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
+        reader = csv.DictReader(file)
+        for line in reader:
+            yield AggregationRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
 
 
 class RequestAggregator:
@@ -41,33 +41,35 @@ class RequestAggregator:
             lambda: {"total": 0, "success": 0}
         )
 
-    def process(self, records: Iterator[RequestRecord]) -> None:
-        """リクエストレコードを集計"""
+    def process(self, records: Iterator[AggregationRecord]) -> None:
+        """リクエストの統計を集計"""
         for record in records:
             key = (record.app, record.cc)
             stats = self.app_cc_stats[key]
             stats["total"] += 1
             stats["success"] += record.is_success
 
-    def get_app_cc_statistics(self) -> List[Dict]:
-        """app/ccの組み合わせごとの統計を返す"""
+    def summarize(self) -> List[Dict]:
+        """ "集計結果のサマリーを返す"""
         stats = []
         for (app, cc), counts in sorted(self.app_cc_stats.items()):
-            success_rate = (
-                (counts["success"] / counts["total"] * 100)
-                if counts["total"] > 0
-                else 0
+            success_rate = self._calculate_success_rate(
+                counts["total"], counts["success"]
             )
             stats.append(
                 {
-                    "app": app,
-                    "cc": cc,
-                    "total": counts["total"],
-                    "success": counts["success"],
-                    "success_rate": f"{success_rate:.2f}",
+                    "APP": app,
+                    "CC": cc,
+                    "TotalCount": counts["total"],
+                    "SuccessCount": counts["success"],
+                    "SuccessRate": f"{success_rate:.2f}",
                 }
             )
         return stats
+
+    def _calculate_success_rate(self, total: int, success: int) -> float:
+        """成功率を計算して浮動小数点数で返す"""
+        return (success / total * 100) if total > 0 else 0
 
     # def get_app_statistics(self) -> List[Dict]:
     #     """appごとの集計結果を返す"""
