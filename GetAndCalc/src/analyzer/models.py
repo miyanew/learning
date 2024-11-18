@@ -25,12 +25,12 @@ class RequestReader:
             for line in reader:
                 yield RequestRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
 
-    @staticmethod
-    def from_file(file: TextIO) -> Iterator[RequestRecord]:
-        """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
-        reader = csv.DictReader(file)
-        for line in reader:
-            yield RequestRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
+    # @staticmethod
+    # def from_file(file: TextIO) -> Iterator[RequestRecord]:
+    #     """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
+    #     reader = csv.DictReader(file)
+    #     for line in reader:
+    #         yield RequestRecord(app=line["app"], cc=line["cc"], rc=line["rc"])
 
 
 class RequestAggregator:
@@ -40,15 +40,10 @@ class RequestAggregator:
         self.app_cc_stats: DefaultDict[Tuple[str, str], Dict[str, int]] = defaultdict(
             lambda: {"total": 0, "success": 0}
         )
-        self.unique_apps: Set[str] = set()
-        self.unique_ccs: Set[str] = set()
 
     def process(self, records: Iterator[RequestRecord]) -> None:
         """リクエストレコードを集計"""
         for record in records:
-            self.unique_apps.add(record.app)
-            self.unique_ccs.add(record.cc)
-
             key = (record.app, record.cc)
             stats = self.app_cc_stats[key]
             stats["total"] += 1
@@ -74,22 +69,22 @@ class RequestAggregator:
             )
         return stats
 
-    def get_app_statistics(self) -> List[Dict]:
-        """appごとの集計結果を返す"""
-        app_stats: DefaultDict[str, Dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "success": 0}
-        )
+    # def get_app_statistics(self) -> List[Dict]:
+    #     """appごとの集計結果を返す"""
+    #     app_stats: DefaultDict[str, Dict[str, int]] = defaultdict(
+    #         lambda: {"total": 0, "success": 0}
+    #     )
 
-        for (app, _), counts in self.app_cc_stats.items():
-            app_stats[app]["total"] += counts["total"]
-            app_stats[app]["success"] += counts["success"]
+    #     for (app, _), counts in self.app_cc_stats.items():
+    #         app_stats[app]["total"] += counts["total"]
+    #         app_stats[app]["success"] += counts["success"]
 
-        return [
-            {
-                "app": app,
-                "total": counts["total"],
-                "success": counts["success"],
-                "success_rate": f"{(counts['success'] / counts['total'] * 100):.2f}",
-            }
-            for app, counts in sorted(app_stats.items())
-        ]
+    #     return [
+    #         {
+    #             "app": app,
+    #             "total": counts["total"],
+    #             "success": counts["success"],
+    #             "success_rate": f"{(counts['success'] / counts['total'] * 100):.2f}",
+    #         }
+    #         for app, counts in sorted(app_stats.items())
+    #     ]
