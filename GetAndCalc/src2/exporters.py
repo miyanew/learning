@@ -1,6 +1,8 @@
+import csv
 import json
 import os
 from abc import ABC, abstractmethod
+from io import StringIO
 from typing import Dict, List
 
 
@@ -19,13 +21,13 @@ class CSVFormatter(StatisticsFormatter):
         if not statistics:
             return ""
 
+        output = StringIO()
         headers = statistics[0].keys()
-        lines = [",".join(headers)]
+        writer = csv.DictWriter(output, headers)
+        writer.writeheader()
+        writer.writerows(statistics)
+        return output.getvalue()
 
-        for stat in statistics:
-            lines.append(",".join(str(stat[h]) for h in headers))
-
-        return "\n".join(lines)
 
 
 class JSONFormatter(StatisticsFormatter):

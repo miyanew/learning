@@ -5,11 +5,10 @@ import traceback
 from datetime import datetime
 from typing import List
 
+from exceptions import CollectionError
 from exporters import CSVFormatter, StatisticsExporter
 from file_collector import FileCollector
 from models import RequestAggregator, RequestReader
-
-from exceptions import CollectionError
 
 BASE_DIR = ""
 

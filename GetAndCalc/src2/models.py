@@ -2,74 +2,117 @@ import csv
 from collections import defaultdict
 from typing import DefaultDict, Dict, Iterator, List, TextIO, Tuple
 
+CSV_HEADER_END_TIME = "End Time Local"
+CSV_HEADER_SITE = "Site"
+CSV_HEADER_APP = "APP"
+CSV_HEADER_RC = "RC"
+
 SUCCESS_CASE = "PROC_SUCCESS"
 
 
 class AggregationRecord:
     """集計対象の1レコードを表現するデータクラス"""
 
-    def __init__(self, app: str, cc: str, rc: str):
+    def __init__(self, endtime: str, site: str, app: str, rc: str):
+        self.endtime = endtime
+        self.site = site
         self.app = app
-        self.cc = cc
         self.is_success = rc == SUCCESS_CASE
 
 
 class RequestReader:
     # """CSVからリクエストレコードを読み出すクラス"""
-
     # @staticmethod
     # def from_csv(file_path: str) -> Iterator[AggregationRecord]:
     #     """CSVファイルからリクエストレコードのイテレータを生成"""
     #     with open(file_path, "r", encoding="utf-8") as f:
     #         reader = csv.DictReader(f)
     #         for line in reader:
-    #             yield AggregationRecord(app=line["APP"], cc=line["CC"], rc=line["RC"])
+    #             yield AggregationRecord(
+    #                 endtime=line[CSV_HEADER_END_TIME], 
+    #                 site=line[CSV_HEADER_SITE],
+    #                 app=line[CSV_HEADER_APP], 
+    #                 rc=line[CSV_HEADER_RC],
+    #             )
 
     @staticmethod
     def from_file(file: TextIO) -> Iterator[AggregationRecord]:
         """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
         reader = csv.DictReader(file)
         for line in reader:
-            yield AggregationRecord(app=line["APP"], cc=line["CC"], rc=line["RC"])
+            yield AggregationRecord(
+                endtime=line[CSV_HEADER_END_TIME], 
+                site=line[CSV_HEADER_SITE],
+                app=line[CSV_HEADER_APP], 
+                rc=line[CSV_HEADER_RC],
+            )
 
 
 class RequestAggregator:
     """リクエスト結果の集計を行うクラス"""
 
     def __init__(self):
-        self.app_cc_stats: DefaultDict[Tuple[str, str], Dict[str, int]] = defaultdict(
+        self.site_app_stats: DefaultDict[Tuple[str, str, str], Dict[str, int]] = defaultdict(
             lambda: {"total": 0, "success": 0}
         )
 
     def process(self, records: Iterator[AggregationRecord]) -> None:
         """リクエストの統計を集計"""
         for record in records:
-            key = (record.app, record.cc)
-            stats = self.app_cc_stats[key]
+            key = (record.endtime, record.site, record.app)
+            stats = self.site_app_stats[key]
             stats["total"] += 1
             stats["success"] += record.is_success
 
     def summarize(self) -> List[Dict]:
         """ "集計結果のサマリーを返す"""
         stats = []
-        for (app, cc), counts in sorted(self.app_cc_stats.items()):
-            success_rate = self._calculate_success_rate(
-                counts["total"], counts["success"]
-            )
+        for (endtime, site, app), counts in sorted(self.site_app_stats.items()):
             stats.append(
                 {
-                    "APP": app,
-                    "CC": cc,
+                    "EndTime": endtime,
+                    "Site": site,
+                    "App": app,
                     "TotalCount": counts["total"],
                     "SuccessCount": counts["success"],
-                    "SuccessRate": f"{success_rate:.2f}",
                 }
             )
         return stats
+    
+    def format_summary(self) -> List[Dict]:
+        """集計結果のサマリーをCSV出力用に整形する"""
+        site_app_stats = self.summarize()
+        site_stats = defaultdict(lambda: defaultdict(int))
 
-    def _calculate_success_rate(self, total: int, success: int) -> float:
+        for stat in site_app_stats:
+            site = stat["Site"]
+            app = stat["App"]
+            sr = f"{self._calculate_sr(stat["TotalCount"], stat["SuccessCount"]):.2f}"
+
+            site_stats[site]["Site"] = site
+            site_stats[site]["EndTime"] = stat["EndTime"]
+            site_stats[site][f"{app}_Total"] = stat["TotalCount"]
+            site_stats[site][f"{app}_Success"] = stat["SuccessCount"]
+            site_stats[site][f"{app}_SR"] = sr
+        
+        header = self._generate_header()
+        result = []
+
+        return result
+
+
+
+    def _calculate_sr(self, total: int, success: int) -> float:
         """成功率を計算して浮動小数点数で返す"""
-        return (success / total * 100)
+        return success / total * 100 if total else 0
+
+    def _generate_header(self):
+        """出力するCSVのヘッダーを生成する"""
+        ini_header = ["EndTime", "Site"]
+        app_order = ["app1", "app2", "app3", "app4", "app5", "app6"]
+        metric_order = ["Total", "Success", "SR"]
+        cols_metric = [f"{app}_{met}" for app in app_order for met in metric_order]
+        return ini_header + cols_metric
 
     # def get_app_statistics(self) -> List[Dict]:
     #     """appごとの集計結果を返す"""
