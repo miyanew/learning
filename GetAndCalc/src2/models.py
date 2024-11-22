@@ -93,9 +93,11 @@ class RequestAggregator:
             )
 
             site_stat = site_stats.get(site)
-            if site_stat is not None:
-                site_stats[site]["Site"] = site
-                site_stats[site]["EndTime"] = site_app_stat["EndTime"]
+            if site_stat is None:
+                site_stats[site] = {
+                    "Site": site,
+                    "EndTime": site_app_stat["EndTime"],
+                }
 
             site_stats[site].update(
                 {

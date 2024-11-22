@@ -3,7 +3,7 @@ from typing import Dict, List
 
 import paramiko
 
-from exceptions import AuthenticationError, CollectionError, SFTPConnectionError
+from exceptions import AuthenticationError, CollectionError
 
 
 class FileCollector:
@@ -26,26 +26,28 @@ class FileCollector:
 
             sftp = self._get_sftp_session(host)
             sftp.get(remote_path, local_path)
+        except (ConnectionError, AuthenticationError) as e:
+            raise ConnectionError(f"Host connection error: {e}")
         except Exception as e:
-            raise CollectionError(
-                f"Unexpected error while collecting {remote_path}: {e}"
-            ) from e
+            raise CollectionError(f"Collection failed: {host}: {remote_path}, {e}")
 
     @property
     def collected_files(self) -> List[str]:
         return self._collected_files
 
     def _get_sftp_session(self, host: str) -> paramiko.SFTPClient:
-        if host not in self.sftp_sessions:
-            if host not in self.sessions:
-                self.sessions[host] = self._create_ssh_session(host)
-            try:
-                self.sftp_sessions[host] = self.sessions[host].open_sftp()
-                self.sftp_sessions[host].get_channel().settimeout(60)
-            except paramiko.SSHException as e:
-                raise SFTPConnectionError(
-                    f"SFTP connection failed for {host}: {e}"
-                ) from e
+        try:
+            if host not in self.sftp_sessions:
+                if host not in self.sessions:
+                    self.sessions[host] = self._create_ssh_session(host)
+        except Exception as e:
+            raise ConnectionError(f"SSH connection failed for {host}: {e}")
+
+        try:
+            self.sftp_sessions[host] = self.sessions[host].open_sftp()
+            self.sftp_sessions[host].get_channel().settimeout(60)
+        except Exception as e:
+            raise ConnectionError(f"SFTP connection failed for {host}: {e}")
         return self.sftp_sessions[host]
 
     def _create_ssh_session(self, host: str) -> paramiko.SSHClient:
@@ -70,37 +72,7 @@ class FileCollector:
         for sftp in self.sftp_sessions.values():
             sftp.close()
         self.sftp_sessions.clear()
+
         for session in self.sessions.values():
             session.close()
         self.sessions.clear()
-
-    # def collect_files(self, sftp_configs) -> List[str]:
-    #     local_paths = []
-    #     try:
-    #         for host, config in sftp_configs.items():
-    #             with self._sftp_session(host) as sftp:
-    #                 remote_path = os.path.join(
-    #                     config["remote_dir"], config["remote_file"]
-    #                 )
-    #                 local_path = os.path.join(config["local_dir"], config["local_file"])
-
-    #                 os.makedirs(config["local_dir"], exist_ok=True)
-
-    #                 sftp.get(remote_path, local_path)
-    #                 local_paths.append(local_path)
-    #     except Exception as e:
-    #         raise CollectionError(f"Failed to collect files: {str(e)}") from e
-
-    #     return local_paths
-
-    # @contextlib.contextmanager
-    # def _sftp_session(self, host):
-    #     session = None
-    #     try:
-    #         session = self._create_ssh_session(host)
-    #         sftp = session.open_sftp()
-    #         yield sftp
-    #     finally:
-    #         if session:
-    #             sftp.close()
-    #             session.close()

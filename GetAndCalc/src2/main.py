@@ -5,10 +5,11 @@ import traceback
 from datetime import datetime
 from typing import List
 
-from exceptions import CollectionError
 from exporters import CSVFormatter, StatisticsExporter
 from file_collector import FileCollector
 from models import RequestAggregator, RequestReader
+
+from exceptions import CollectionError
 
 BASE_DIR = ""
 
@@ -50,12 +51,7 @@ class Main:
             summary_records = self._aggregate_records(collected_files)
 
             self.logger.info("Starting statistics export")
-            app_cc_stats_path = os.path.join(
-                os.path.join(BASE_DIR, "PM"),
-                f"success_rate_summary_{current_date}{current_hhmm}.csv",
-            )
-            exporter = StatisticsExporter(CSVFormatter())
-            exporter.export(summary_records, app_cc_stats_path)
+            self._export_csv(summary_records)
 
             self.logger.info("Aggregate completed successfully")
         except Exception as e:
@@ -80,16 +76,15 @@ class Main:
                     try:
                         collector.collect_file(host, remote_path, local_dir)
                         self.logger.info(f"Collection successfully: {remote_path}")
+                    except ConnectionError as e:
+                        self.logger.warning(f"Host connection error: {e}")
+                        break
                     except CollectionError as e:
                         self.logger.warning(f"Collection failed: {remote_path}: {e}")
-                    except Exception as e:
-                        self.logger.warning(f"Session error: {host}: {e}")
-                        self.logger.debug("Detailed traceback:", exc_info=True)
-                        break
         return collector.collected_files
 
     def _build_receive_dir_path(self, remote_path: str) -> str:
-        base_dir = os.path.join(BASE_DIR, "RECEIVE", current_date, current_hhmm)
+        base_dir = os.path.join(BASE_DIR, "INPUT", current_date, current_hhmm)
         child_dir = os.path.basename(os.path.dirname(remote_path))
         return os.path.join(base_dir, child_dir)
 
@@ -106,6 +101,13 @@ class Main:
                 continue
         return aggregator.format_summary()
 
+    def _export_csv(self, summary_records):
+        app_cc_stats_path = os.path.join(
+            os.path.join(BASE_DIR, "OUTPUT"),
+            f"success_rate_summary_{current_date}{current_hhmm}.csv",
+        )
+        exporter = StatisticsExporter(CSVFormatter())
+        exporter.export(summary_records, app_cc_stats_path)
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))

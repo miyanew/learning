@@ -45,8 +45,11 @@ class StatisticsExporter:
     def export(self, statistics: List[Dict], output_path: str) -> None:
         """統計結果をファイルに出力"""
         formatted_data = self.formatter.format(statistics)
-        directory = os.path.dirname(output_path)
-        os.makedirs(directory, exist_ok=True)
+        self._ensure_directory(output_path)
 
         with open(output_path, "w", encoding="utf-8") as file:
             file.write(formatted_data)
+
+    def _ensure_directory(self, file_path: str) -> None:
+        directory = os.path.dirname(file_path)
+        os.makedirs(directory, exist_ok=True)
