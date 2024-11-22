@@ -40,37 +40,24 @@ class Main:
         self.logger.info(f"Logging initialized. Log file: {log_path}")
 
     def run(self, sftp_config_path):
+        sftp_config = self._load_config(sftp_config_path)
+
         try:
             self.logger.info("Starting file collection")
-            sftp_config = self._load_config(sftp_config_path)
-
-            local_paths = self._collect_files(sftp_config)
+            collected_files = self._collect_files(sftp_config)
 
             self.logger.info("Starting aggregate")
-            aggregator = RequestAggregator()
-            for fp in local_paths:
-                try:
-                    with open(fp, "r", encoding="utf-8") as f:
-                        records = RequestReader.from_file(f)
-                        aggregator.process(records)
-                    self.logger.info(f"Successfully aggregated file: {fp}")
-                except IOError as e:
-                    self.logger.error(f"Failed to open file {fp}: {e}")
-                    continue
+            summary_records = self._aggregate_records(collected_files)
 
+            self.logger.info("Starting statistics export")
             app_cc_stats_path = os.path.join(
                 os.path.join(BASE_DIR, "PM"),
-                f"success_rate_summary_{current_date}_{current_hhmm}.csv",
+                f"success_rate_summary_{current_date}{current_hhmm}.csv",
             )
-            self.logger.info(f"App/CC statistics exporting to {app_cc_stats_path}")
             exporter = StatisticsExporter(CSVFormatter())
-            exporter.export(aggregator.summarize(), app_cc_stats_path)
+            exporter.export(summary_records, app_cc_stats_path)
 
             self.logger.info("Aggregate completed successfully")
-        except CollectionError as e:
-            self.logger.error(f"SFTP collection failed: {e}")
-            self.logger.debug("Detailed traceback:", exc_info=True)
-            raise
         except Exception as e:
             self.logger.error(f"Unexpected failed: {e}")
             self.logger.error(traceback.format_exc())
@@ -85,23 +72,39 @@ class Main:
             raise
 
     def _collect_files(self, sftp_config) -> List[str]:
-        collector = FileCollector(sftp_config)
-        for host, config in sftp_config.items():
-            for remote_path in config["remote_paths"]:
-                local_dir = self._build_receive_dir_path(remote_path)
-
-                try:
-                    collector.collect_file(host, remote_path, local_dir)
-                except Exception as e:
-                    raise CollectionError(
-                        f"Failed to collect {remote_path}: {e}"
-                    ) from e
-        return []
+        with FileCollector(sftp_config) as collector:
+            for host, config in sftp_config.items():
+                for remote_path in config["remote_paths"]:
+                    local_dir = self._build_receive_dir_path(remote_path)
+                    os.makedirs(local_dir, exist_ok=True)
+                    try:
+                        collector.collect_file(host, remote_path, local_dir)
+                        self.logger.info(f"Collection successfully: {remote_path}")
+                    except CollectionError as e:
+                        self.logger.warning(f"Collection failed: {remote_path}: {e}")
+                    except Exception as e:
+                        self.logger.warning(f"Session error: {host}: {e}")
+                        self.logger.debug("Detailed traceback:", exc_info=True)
+                        break
+        return collector.collected_files
 
     def _build_receive_dir_path(self, remote_path: str) -> str:
         base_dir = os.path.join(BASE_DIR, "RECEIVE", current_date, current_hhmm)
         child_dir = os.path.basename(os.path.dirname(remote_path))
         return os.path.join(base_dir, child_dir)
+
+    def _aggregate_records(self, local_files):
+        aggregator = RequestAggregator()
+        for fp in local_files:
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    records = RequestReader.from_textio(f)
+                    aggregator.process(records)
+                self.logger.info(f"Successfully aggregated file: {fp}")
+            except IOError as e:
+                self.logger.error(f"Failed to open file {fp}: {e}")
+                continue
+        return aggregator.format_summary()
 
 
 if __name__ == "__main__":

@@ -21,7 +21,20 @@ class AggregationRecord:
 
 
 class RequestReader:
-    # """CSVからリクエストレコードを読み出すクラス"""
+    """CSVからリクエストレコードを読み出すクラス"""
+
+    @staticmethod
+    def from_textio(textio: TextIO) -> Iterator[AggregationRecord]:
+        """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
+        reader = csv.DictReader(textio)
+        for line in reader:
+            yield AggregationRecord(
+                endtime=line[CSV_HEADER_END_TIME],
+                site=line[CSV_HEADER_SITE],
+                app=line[CSV_HEADER_APP],
+                rc=line[CSV_HEADER_RC],
+            )
+
     # @staticmethod
     # def from_csv(file_path: str) -> Iterator[AggregationRecord]:
     #     """CSVファイルからリクエストレコードのイテレータを生成"""
@@ -29,31 +42,19 @@ class RequestReader:
     #         reader = csv.DictReader(f)
     #         for line in reader:
     #             yield AggregationRecord(
-    #                 endtime=line[CSV_HEADER_END_TIME], 
+    #                 endtime=line[CSV_HEADER_END_TIME],
     #                 site=line[CSV_HEADER_SITE],
-    #                 app=line[CSV_HEADER_APP], 
+    #                 app=line[CSV_HEADER_APP],
     #                 rc=line[CSV_HEADER_RC],
     #             )
-
-    @staticmethod
-    def from_file(file: TextIO) -> Iterator[AggregationRecord]:
-        """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
-        reader = csv.DictReader(file)
-        for line in reader:
-            yield AggregationRecord(
-                endtime=line[CSV_HEADER_END_TIME], 
-                site=line[CSV_HEADER_SITE],
-                app=line[CSV_HEADER_APP], 
-                rc=line[CSV_HEADER_RC],
-            )
 
 
 class RequestAggregator:
     """リクエスト結果の集計を行うクラス"""
 
     def __init__(self):
-        self.site_app_stats: DefaultDict[Tuple[str, str, str], Dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "success": 0}
+        self.site_app_stats: DefaultDict[Tuple[str, str, str], Dict[str, int]] = (
+            defaultdict(lambda: {"total": 0, "success": 0})
         )
 
     def process(self, records: Iterator[AggregationRecord]) -> None:
@@ -78,29 +79,44 @@ class RequestAggregator:
                 }
             )
         return stats
-    
+
     def format_summary(self) -> List[Dict]:
         """集計結果のサマリーをCSV出力用に整形する"""
         site_app_stats = self.summarize()
-        site_stats = defaultdict(lambda: defaultdict(int))
 
-        for stat in site_app_stats:
-            site = stat["Site"]
-            app = stat["App"]
-            sr = f"{self._calculate_sr(stat["TotalCount"], stat["SuccessCount"]):.2f}"
+        site_stats = {}
+        for site_app_stat in site_app_stats:
+            site = site_app_stat["Site"]
+            app = site_app_stat["App"]
+            sr = self._calculate_sr(
+                site_app_stat["TotalCount"], site_app_stat["SuccessCount"]
+            )
 
-            site_stats[site]["Site"] = site
-            site_stats[site]["EndTime"] = stat["EndTime"]
-            site_stats[site][f"{app}_Total"] = stat["TotalCount"]
-            site_stats[site][f"{app}_Success"] = stat["SuccessCount"]
-            site_stats[site][f"{app}_SR"] = sr
-        
+            site_stat = site_stats.get(site)
+            if site_stat is not None:
+                site_stats[site]["Site"] = site
+                site_stats[site]["EndTime"] = site_app_stat["EndTime"]
+
+            site_stats[site].update(
+                {
+                    f"{app}_Total": site_app_stat["TotalCount"],
+                    f"{app}_Success": site_app_stat["SuccessCount"],
+                    f"{app}_SR": round(sr, 2),
+                }
+            )
+
         header = self._generate_header()
+
         result = []
-
+        for stats in site_stats.values():
+            row = {}
+            for col in header:
+                if col.endswith("_SR"):
+                    row[col] = stats.get(col, "0.00")
+                else:
+                    row[col] = stats.get(col, "0")
+            result.append(row)
         return result
-
-
 
     def _calculate_sr(self, total: int, success: int) -> float:
         """成功率を計算して浮動小数点数で返す"""

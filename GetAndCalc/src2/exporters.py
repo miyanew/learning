@@ -29,7 +29,6 @@ class CSVFormatter(StatisticsFormatter):
         return output.getvalue()
 
 
-
 class JSONFormatter(StatisticsFormatter):
     """JSON形式でフォーマットするクラス"""
 

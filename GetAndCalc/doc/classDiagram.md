@@ -1,4 +1,6 @@
-```Mermaid
+# クラス図
+
+```mermaid
 classDiagram
     class Main {
         +run(sftp_config_path)
@@ -19,16 +21,18 @@ classDiagram
     }
 
     class AggregationRecord {
+        +endtime: str
+        +site: str
         +app: str
-        +cc: str
-        +is_success: bool
+        +is_success: int
     }
 
     class RequestAggregator {
-        +app_cc_stats: DefaultDict
+        +site_app_stats: DefaultDict
         +process(records)
-        +summarize()
-        -_calculate_success_rate(total, success)
+        +format_summary()
+        -summarize()
+        -_calculate_sr(total, success)
     }
 
     class StatisticsFormatter {
