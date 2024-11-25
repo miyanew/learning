@@ -24,28 +24,43 @@ class Main:
     """
 
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.log_file_path = self._get_log_file_path()
         self._setup_logging()
+        self._setup_paramiko_logging()
 
-    def _setup_logging(self) -> None:
+    def _get_log_file_path(self) -> str:
         """
-        ログ出力の設定を行う。
+        ログファイルのパスを生成する。
         """
         log_dir = os.path.join(BASE_DIR, "LOG")
         os.makedirs(log_dir, exist_ok=True)
 
         log_file = f"calc_rate_{current_date}_{current_hhmm}.log"
-        log_path = os.path.join(log_dir, log_file)
+        return os.path.join(log_dir, log_file)
 
+    def _setup_logging(self) -> None:
+        """
+        アプリケーション全体のログ設定を行う。
+        """
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
-                logging.FileHandler(log_path, encoding="utf-8"),
+                logging.FileHandler(self.log_file_path, encoding="utf-8"),
                 logging.StreamHandler(),  # コンソールにも出力
             ],
         )
-        self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Logging initialized. Log file: {log_path}")
+
+    def _setup_paramiko_logging(self) -> None:
+        """
+        Paramikoのロギング設定を行う。ログを無視する
+        """
+        paramiko_logger = logging.getLogger("paramiko")
+        paramiko_logger.setLevel(logging.ERROR)
+        paramiko_null_handler = logging.NullHandler()
+        paramiko_logger.addHandler(paramiko_null_handler)
+        paramiko_logger.propagate = False  # 親ロガーに伝播させない
 
     def run(self, sftp_config_path: str) -> None:
         """
