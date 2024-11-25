@@ -18,7 +18,7 @@ classDiagram
         -_close_all_sessions()
     }
 
-    class RequestReader {
+    class RecordReader {
         +from_textio(textio) $
     }
 
@@ -29,7 +29,7 @@ classDiagram
         +is_success: int
     }
 
-    class RequestAggregator {
+    class RecordAggregator {
         +site_app_stats: DefaultDict
         +process(records)
         +format_summary()
@@ -65,9 +65,9 @@ classDiagram
     StatisticsFormatter <|-- CSVFormatter: implements
     StatisticsFormatter <|-- JSONFormatter: implements
     StatisticsExporter --> StatisticsFormatter: uses
-    RequestAggregator --> AggregationRecord: processes
-    RequestReader --> AggregationRecord: creates
+    RecordAggregator --> AggregationRecord: processes
+    RecordReader --> AggregationRecord: creates
     Main --> FileCollector: uses
-    Main --> RequestAggregator: uses
+    Main --> RecordAggregator: uses
     Main --> StatisticsExporter: uses
 ```

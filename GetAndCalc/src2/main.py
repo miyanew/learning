@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from exporters import CSVFormatter, StatisticsExporter
 from file_collector import FileCollector
-from models import RequestAggregator, RequestReader
+from models import RecordAggregator, RecordReader
 
 from exceptions import CollectionError, FileWriteError
 
@@ -127,11 +127,11 @@ class Main:
         """
         収集したファイルからレコードを集計する。
         """
-        aggregator = RequestAggregator()
+        aggregator = RecordAggregator()
         for fp in local_files:
             try:
                 with open(fp, "r", encoding="utf-8") as f:
-                    records = RequestReader.from_textio(f)
+                    records = RecordReader.from_textio(f)
                     aggregator.process(records)
                 self.logger.info(f"Successfully aggregated file: {fp}")
             except IOError as e:

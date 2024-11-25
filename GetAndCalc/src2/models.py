@@ -20,12 +20,12 @@ class AggregationRecord:
         self.is_success = rc == SUCCESS_CASE
 
 
-class RequestReader:
-    """CSVからリクエストレコードを読み出すクラス"""
+class RecordReader:
+    """CSVからレコードを読み出すクラス"""
 
     @staticmethod
     def from_textio(textio: TextIO) -> Iterator[AggregationRecord]:
-        """ファイルオブジェクトからリクエストレコードのイテレータを生成"""
+        """ファイルオブジェクトからレコードのイテレータを生成"""
         reader = csv.DictReader(textio)
         for line in reader:
             yield AggregationRecord(
@@ -49,8 +49,8 @@ class RequestReader:
     #             )
 
 
-class RequestAggregator:
-    """リクエスト結果の集計を行うクラス"""
+class RecordAggregator:
+    """レコードの集計を行うクラス"""
 
     def __init__(self):
         self.site_app_stats: DefaultDict[Tuple[str, str, str], Dict[str, int]] = (
@@ -58,7 +58,7 @@ class RequestAggregator:
         )
 
     def process(self, records: Iterator[AggregationRecord]) -> None:
-        """リクエストの統計を集計"""
+        """レコードを数え上げる"""
         for record in records:
             key = (record.endtime, record.site, record.app)
             stats = self.site_app_stats[key]
@@ -66,7 +66,7 @@ class RequestAggregator:
             stats["success"] += record.is_success
 
     def summarize(self) -> List[Dict]:
-        """ "集計結果のサマリーを返す"""
+        """レコードを集計する"""
         stats = []
         for (endtime, site, app), counts in sorted(self.site_app_stats.items()):
             stats.append(
