@@ -3,13 +3,13 @@ import logging
 import os
 import traceback
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 
 from exporters import CSVFormatter, StatisticsExporter
 from file_collector import FileCollector
 from models import RequestAggregator, RequestReader
 
-from exceptions import CollectionError
+from exceptions import CollectionError, FileWriteError
 
 BASE_DIR = ""
 
@@ -19,10 +19,17 @@ current_hhmm = current_datetime.strftime("%H%M")
 
 
 class Main:
+    """
+    データ収集、集計、エクスポートを行うメイン処理クラス。
+    """
+
     def __init__(self):
         self._setup_logging()
 
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
+        """
+        ログ出力の設定を行う。
+        """
         log_dir = os.path.join(BASE_DIR, "LOG")
         os.makedirs(log_dir, exist_ok=True)
 
@@ -40,10 +47,17 @@ class Main:
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Logging initialized. Log file: {log_path}")
 
-    def run(self, sftp_config_path):
-        sftp_config = self._load_config(sftp_config_path)
+    def run(self, sftp_config_path: str) -> None:
+        """
+        メイン処理を実行する。
 
+        Raises:
+            Exception: 処理中に発生した予期せぬエラー
+        """
         try:
+            self.logger.info("Starting config load")
+            sftp_config = self._load_config(sftp_config_path)
+
             self.logger.info("Starting file collection")
             collected_files = self._collect_files(sftp_config)
 
@@ -59,15 +73,29 @@ class Main:
             self.logger.error(traceback.format_exc())
             raise
 
-    def _load_config(self, config_path):
+    def _load_config(self, config_path: str) -> Dict:
+        """
+        設定ファイルを読み込む。
+
+        Raises:
+            json.JSONDecodeError: JSON形式が不正な場合
+            FileNotFoundError: 設定ファイルが存在しない場合
+        """
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception as e:
+        except (json.JSONDecodeError, FileNotFoundError) as e:
             self.logger.error(f"Failed to load config: {e}")
             raise
 
-    def _collect_files(self, sftp_config) -> List[str]:
+    def _collect_files(self, sftp_config: Dict) -> List[str]:
+        """
+        SFTPサーバーからファイルを収集する。
+
+        Raises:
+            ConnectionError: サーバー接続エラー
+            CollectionError: ファイル収集エラー
+        """
         with FileCollector(sftp_config) as collector:
             for host, config in sftp_config.items():
                 for remote_path in config["remote_paths"]:
@@ -75,20 +103,30 @@ class Main:
                     os.makedirs(local_dir, exist_ok=True)
                     try:
                         collector.collect_file(host, remote_path, local_dir)
-                        self.logger.info(f"Collection successfully: {remote_path}")
+                        self.logger.info(
+                            f"Collection successfully: {host}: {remote_path}"
+                        )
                     except ConnectionError as e:
-                        self.logger.warning(f"Host connection error: {e}")
+                        self.logger.warning(f"Host connection error: {host}: {e}")
                         break
                     except CollectionError as e:
-                        self.logger.warning(f"Collection failed: {remote_path}: {e}")
+                        self.logger.warning(
+                            f"Collection failed: {host}: {remote_path}: {e}"
+                        )
         return collector.collected_files
 
     def _build_receive_dir_path(self, remote_path: str) -> str:
+        """
+        ローカルの受信ディレクトリパスを構築する。
+        """
         base_dir = os.path.join(BASE_DIR, "INPUT", current_date, current_hhmm)
         child_dir = os.path.basename(os.path.dirname(remote_path))
         return os.path.join(base_dir, child_dir)
 
-    def _aggregate_records(self, local_files):
+    def _aggregate_records(self, local_files: List[str]) -> List[Dict]:
+        """
+        収集したファイルからレコードを集計する。
+        """
         aggregator = RequestAggregator()
         for fp in local_files:
             try:
@@ -101,13 +139,26 @@ class Main:
                 continue
         return aggregator.format_summary()
 
-    def _export_csv(self, summary_records):
+    def _export_csv(self, summary_records: List[Dict]) -> None:
+        """
+        集計結果をCSVファイルにエクスポートする。
+
+        Raises:
+            FileWriteError: ファイル書き込みエラー
+        """
+
         app_cc_stats_path = os.path.join(
             os.path.join(BASE_DIR, "OUTPUT"),
             f"success_rate_summary_{current_date}{current_hhmm}.csv",
         )
         exporter = StatisticsExporter(CSVFormatter())
-        exporter.export(summary_records, app_cc_stats_path)
+
+        try:
+            exporter.export(summary_records, app_cc_stats_path)
+        except FileWriteError as e:
+            self.logger.error(f"Error exporting statistical data: {e}")
+            raise
+
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))

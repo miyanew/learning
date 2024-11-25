@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from io import StringIO
 from typing import Dict, List
 
+from exceptions import FileWriteError
+
 
 class StatisticsFormatter(ABC):
     """統計結果のフォーマッタの基底クラス"""
@@ -21,8 +23,15 @@ class CSVFormatter(StatisticsFormatter):
         if not statistics:
             return ""
 
-        output = StringIO()
+        if not all(isinstance(stat, dict) for stat in statistics):
+            raise ValueError("All elements must be of type dict")
+
         headers = statistics[0].keys()
+
+        if not all(set(stat.keys()) == set(headers) for stat in statistics):
+            raise ValueError("All elements must have the same keys")
+
+        output = StringIO()
         writer = csv.DictWriter(output, headers)
         writer.writeheader()
         writer.writerows(statistics)
@@ -47,8 +56,11 @@ class StatisticsExporter:
         formatted_data = self.formatter.format(statistics)
         self._ensure_directory(output_path)
 
-        with open(output_path, "w", encoding="utf-8") as file:
-            file.write(formatted_data)
+        try:
+            with open(output_path, "w", encoding="utf-8") as file:
+                file.write(formatted_data)
+        except (OSError, IOError) as e:
+            raise FileWriteError(f"Failed to write to file: {e}")
 
     def _ensure_directory(self, file_path: str) -> None:
         directory = os.path.dirname(file_path)
