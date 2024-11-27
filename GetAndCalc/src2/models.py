@@ -1,5 +1,6 @@
 import csv
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import DefaultDict, Dict, Iterator, List, TextIO, Tuple
 
 CSV_HEADER_END_TIME = "End Time Local"
@@ -24,12 +25,24 @@ class RecordReader:
     """CSVからレコードを読み出すクラス"""
 
     @staticmethod
+    def normalize_time(time_str: str) -> str:
+        """
+        秒を基準に時刻を分単位で丸める。
+        30秒未満は切り捨て、30秒以上は切り上げ。
+        """
+        dt = datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")
+        if dt.second >= 30:
+            dt += timedelta(minutes=1)
+        dt = dt.replace(second=0)
+        return dt.strftime("%Y/%m/%d %H:%M:%S")
+
+    @staticmethod
     def from_textio(textio: TextIO) -> Iterator[AggregationRecord]:
         """ファイルオブジェクトからレコードのイテレータを生成"""
         reader = csv.DictReader(textio)
         for line in reader:
             yield AggregationRecord(
-                endtime=line[CSV_HEADER_END_TIME],
+                endtime=RecordReader.normalize_time(line[CSV_HEADER_END_TIME]),
                 site=line[CSV_HEADER_SITE],
                 app=line[CSV_HEADER_APP],
                 rc=line[CSV_HEADER_RC],
