@@ -8,17 +8,26 @@ CSV_HEADER_SITE = "Site"
 CSV_HEADER_APP = "APP"
 CSV_HEADER_RC = "RC"
 
-SUCCESS_CASE = "PROC_SUCCESS"
-
 
 class AggregationRecord:
     """集計対象の1レコードを表現するデータクラス"""
+
+    SUCCESS_CASES = {
+        "app1": ["PROC_SUCCESS", "PROC_OK"],
+        "app2": ["PROC_COMPLETED"],
+    }
 
     def __init__(self, endtime: str, site: str, app: str, rc: str):
         self.endtime = endtime
         self.site = site
         self.app = app
-        self.is_success = rc == SUCCESS_CASE
+        self.rc = rc
+        self.is_success = self._determine_success()
+
+    def _determine_success(self) -> bool:
+        """成功条件を判定する"""
+        success_cases = self.SUCCESS_CASES.get(self.app, [])
+        return self.rc in success_cases
 
 
 class RecordReader:
