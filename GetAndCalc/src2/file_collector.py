@@ -1,4 +1,5 @@
 import os
+import socket
 from typing import Dict, List
 
 import paramiko
@@ -9,7 +10,9 @@ from exceptions import AuthenticationError, CollectionError
 class FileCollector:
     def __init__(self, ssh_config):
         self.ssh_config = ssh_config
-        self.sessions: Dict[str, paramiko.SSHClient] = {}
+        self.ssh_timeout = 20
+        self.ssh_sessions: Dict[str, paramiko.SSHClient] = {}
+        self.sftp_timeout = 20
         self.sftp_sessions: Dict[str, paramiko.SFTPClient] = {}
         self._collected_files: List[str] = []
 
@@ -38,14 +41,14 @@ class FileCollector:
     def _get_sftp_session(self, host: str) -> paramiko.SFTPClient:
         try:
             if host not in self.sftp_sessions:
-                if host not in self.sessions:
-                    self.sessions[host] = self._create_ssh_session(host)
+                if host not in self.ssh_sessions:
+                    self.ssh_sessions[host] = self._create_ssh_session(host)
         except Exception as e:
             raise ConnectionError(f"SSH connection failed for {host}: {e}")
 
         try:
-            self.sftp_sessions[host] = self.sessions[host].open_sftp()
-            self.sftp_sessions[host].get_channel().settimeout(60)
+            self.sftp_sessions[host] = self.ssh_sessions[host].open_sftp()
+            self.sftp_sessions[host].get_channel().settimeout(self.sftp_timeout)
         except Exception as e:
             raise ConnectionError(f"SFTP connection failed for {host}: {e}")
         return self.sftp_sessions[host]
@@ -60,12 +63,16 @@ class FileCollector:
                 f"Key authentication is required for host: {host}"
             )
 
-        session.connect(
-            hostname=host_conf["ip_address"],
-            port=host_conf["port"],
-            username=host_conf["username"],
-            key_filename=host_conf["key_filename"],
-        )
+        try:
+            session.connect(
+                hostname=host_conf["ip_address"],
+                port=host_conf["port"],
+                username=host_conf["username"],
+                key_filename=host_conf["key_filename"],
+                timeout=self.ssh_timeout,
+            )
+        except socket.timeout as e:
+            raise ConnectionError(f"Connection to {host} timed out: {e}")
         return session
 
     def _close_all_sessions(self):
@@ -73,6 +80,6 @@ class FileCollector:
             sftp.close()
         self.sftp_sessions.clear()
 
-        for session in self.sessions.values():
+        for session in self.ssh_sessions.values():
             session.close()
-        self.sessions.clear()
+        self.ssh_sessions.clear()
