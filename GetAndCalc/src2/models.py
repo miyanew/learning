@@ -16,18 +16,13 @@ class AggregationRecord:
         "app1": ["PROC_SUCCESS", "PROC_OK"],
         "app2": ["PROC_COMPLETED"],
     }
+    APP_NAMES = list(SUCCESS_CASES.keys())
 
     def __init__(self, endtime: str, site: str, app: str, rc: str):
         self.endtime = endtime
         self.site = site
         self.app = app
-        self.rc = rc
-        self.is_success = self._determine_success()
-
-    def _determine_success(self) -> bool:
-        """成功条件を判定する"""
-        success_cases = self.SUCCESS_CASES.get(self.app, [])
-        return self.rc in success_cases
+        self.is_success = rc in self.SUCCESS_CASES.get(self.app, [])
 
 
 class RecordReader:
@@ -75,9 +70,9 @@ class RecordAggregator:
     """レコードの集計を行うクラス"""
 
     def __init__(self):
-        self.site_app_stats: DefaultDict[Tuple[str, str, str], Dict[str, int]] = (
-            defaultdict(lambda: {"total": 0, "success": 0})
-        )
+        self.site_app_stats: DefaultDict[
+            Tuple[str, str, str], Dict[str, int]
+        ] = defaultdict(lambda: {"total": 0, "success": 0})
 
     def process(self, records: Iterator[AggregationRecord]) -> None:
         """レコードを数え上げる"""
@@ -149,7 +144,7 @@ class RecordAggregator:
     def _generate_header(self):
         """出力するCSVのヘッダーを生成する"""
         ini_header = ["EndTime", "Site"]
-        app_order = ["app1", "app2", "app3", "app4", "app5", "app6"]
+        app_order = AggregationRecord.APP_NAMES
         metric_order = ["Total", "Success", "SR"]
         cols_metric = [f"{app}_{met}" for app in app_order for met in metric_order]
         return ini_header + cols_metric
