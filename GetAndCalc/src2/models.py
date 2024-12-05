@@ -7,22 +7,22 @@ CSV_HEADER_END_TIME = "End Time Local"
 CSV_HEADER_SITE = "Site"
 CSV_HEADER_APP = "APP"
 CSV_HEADER_RC = "RC"
-
+DEFAULT_SUCCESS_RATE = 100.00
 
 class AggregationRecord:
     """集計対象の1レコードを表現するデータクラス"""
 
-    SUCCESS_CASES = {
+    APP_SUCCESS_RESULTS = {
         "app1": ["PROC_SUCCESS", "PROC_OK"],
         "app2": ["PROC_COMPLETED"],
     }
-    APP_NAMES = list(SUCCESS_CASES.keys())
+    APP_NAMES = list(APP_SUCCESS_RESULTS.keys())
 
     def __init__(self, endtime: str, site: str, app: str, rc: str):
         self.endtime = endtime
         self.site = site
         self.app = app
-        self.is_success = rc in self.SUCCESS_CASES.get(self.app, [])
+        self.is_success = rc in self.APP_SUCCESS_RESULTS.get(self.app, [])
 
 
 class RecordReader:
@@ -120,18 +120,19 @@ class RecordAggregator:
                 {
                     f"{app}_Total": site_app_stat["TotalCount"],
                     f"{app}_Success": site_app_stat["SuccessCount"],
-                    f"{app}_SR": round(sr, 2),
+                    f"{app}_SR": sr,
                 }
             )
 
         header = self._generate_header()
 
+        # ヘッダーに基づいて各行を生成し、存在しないキーにはデフォルト値をセット
         result = []
         for stats in site_stats.values():
             row = {}
             for col in header:
                 if col.endswith("_SR"):
-                    row[col] = stats.get(col, "0.00")
+                    row[col] = format(stats.get(col, DEFAULT_SUCCESS_RATE), ".2f")
                 else:
                     row[col] = stats.get(col, "0")
             result.append(row)
@@ -139,7 +140,7 @@ class RecordAggregator:
 
     def _calculate_sr(self, total: int, success: int) -> float:
         """成功率を計算して浮動小数点数で返す"""
-        return success / total * 100 if total else 0
+        return success / total * 100 if total else DEFAULT_SUCCESS_RATE
 
     def _generate_header(self):
         """出力するCSVのヘッダーを生成する"""
