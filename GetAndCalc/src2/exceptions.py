@@ -1,5 +1,5 @@
-class AuthenticationError(Exception):
-    """SFTPサーバへの認証時のエラー"""
+class SSHConfigurationError(Exception):
+    """SSHコンフィグに不備あるときのエラー"""
 
     pass
 

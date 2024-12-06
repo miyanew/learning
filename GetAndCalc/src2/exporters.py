@@ -59,7 +59,7 @@ class StatisticsExporter:
         try:
             with open(output_path, "w", encoding="utf-8") as file:
                 file.write(formatted_data)
-        except (OSError, IOError) as e:
+        except Exception as e:
             raise FileWriteError(f"Failed to write to file: {e}")
 
     def _ensure_directory(self, file_path: str) -> None:

@@ -54,13 +54,13 @@ class Main:
 
     def _setup_paramiko_logging(self) -> None:
         """
-        Paramikoのロギング設定を行う。ログを無視する
+        Paramikoログを親ロガーに伝播させない。無視する
         """
         paramiko_logger = logging.getLogger("paramiko")
         paramiko_logger.setLevel(logging.ERROR)
         paramiko_null_handler = logging.NullHandler()
         paramiko_logger.addHandler(paramiko_null_handler)
-        paramiko_logger.propagate = False  # 親ロガーに伝播させない
+        paramiko_logger.propagate = False
 
     def run(self, sftp_config_path: str) -> None:
         """
@@ -75,18 +75,25 @@ class Main:
 
             self.logger.info("Starting file collection")
             collected_files = self._collect_files(sftp_config)
+            if not collected_files:
+                self.logger.warning("No files were collected")
+                return
 
             self.logger.info("Starting aggregate")
             summary_records = self._aggregate_records(collected_files)
+            if not summary_records:
+                self.logger.warning("No properly formatted records found")
+                return
 
             self.logger.info("Starting statistics export")
             self._export_csv(summary_records)
 
             self.logger.info("Aggregate completed successfully")
+        except FileWriteError as e:
+            self.logger.error(str(e))
         except Exception as e:
             self.logger.error(f"Unexpected failed: {e}")
             self.logger.error(traceback.format_exc())
-            raise
 
     def _load_config(self, config_path: str) -> Dict:
         """
@@ -106,10 +113,6 @@ class Main:
     def _collect_files(self, sftp_config: Dict) -> List[str]:
         """
         SFTPサーバーからファイルを収集する。
-
-        Raises:
-            ConnectionError: サーバー接続エラー
-            CollectionError: ファイル収集エラー
         """
         with FileCollector(sftp_config) as collector:
             for host, config in sftp_config.items():
@@ -118,16 +121,15 @@ class Main:
                     os.makedirs(local_dir, exist_ok=True)
                     try:
                         collector.collect_file(host, remote_path, local_dir)
-                        self.logger.info(
-                            f"Collection successfully: {host}: {remote_path}"
-                        )
+                        self.logger.info(f"Collection successfully: {remote_path}")
                     except ConnectionError as e:
-                        self.logger.warning(f"Host connection error: {host}: {e}")
+                        self.logger.warning(str(e))
                         break
                     except CollectionError as e:
-                        self.logger.warning(
-                            f"Collection failed: {host}: {remote_path}: {e}"
-                        )
+                        self.logger.warning(str(e))
+                    except Exception as e:
+                        self.logger.warning(str(e), exc_info=True)
+                        break
         return collector.collected_files
 
     def _build_receive_dir_path(self, remote_path: str) -> str:
@@ -150,8 +152,11 @@ class Main:
                     aggregator.process(records)
                 self.logger.info(f"Successfully aggregated file: {fp}")
             except IOError as e:
-                self.logger.error(f"Failed to open file {fp}: {e}")
-                continue
+                self.logger.warning(f"Failed to open file {fp}: {e}")
+            except ValueError as e:
+                self.logger.warning(f"Invalid format file, nocounted {fp}: {e}")
+            except Exception as e:
+                self.logger.warning(f"Failed aggregate {fp}: {e}")
         return aggregator.format_summary()
 
     def _export_csv(self, summary_records: List[Dict]) -> None:
@@ -162,17 +167,13 @@ class Main:
             FileWriteError: ファイル書き込みエラー
         """
 
-        app_cc_stats_path = os.path.join(
+        stats_path = os.path.join(
             os.path.join(BASE_DIR, "OUTPUT"),
             f"success_rate_summary_{current_date}{current_hhmm}.csv",
         )
         exporter = StatisticsExporter(CSVFormatter())
-
-        try:
-            exporter.export(summary_records, app_cc_stats_path)
-        except FileWriteError as e:
-            self.logger.error(f"Error exporting statistical data: {e}")
-            raise
+        exporter.export(summary_records, stats_path)
+        self.logger.info(f"Exported successfully: {stats_path}")
 
 
 if __name__ == "__main__":
