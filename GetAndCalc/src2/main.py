@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import traceback
 from datetime import datetime
 from typing import Dict, List
 
@@ -9,13 +8,13 @@ from exporters import CSVFormatter, StatisticsExporter
 from file_collector import FileCollector
 from models import RecordAggregator, RecordReader
 
-from exceptions import CollectionError, FileWriteError
+from exceptions import CollectionError
 
 BASE_DIR = ""
 
-current_datetime = datetime.now()
-current_date = current_datetime.strftime("%Y%m%d")
-current_hhmm = current_datetime.strftime("%H%M")
+start_datetime = datetime.now()
+start_date = start_datetime.strftime("%Y%m%d")
+start_hhmm = start_datetime.strftime("%H%M")
 
 
 class Main:
@@ -36,7 +35,7 @@ class Main:
         log_dir = os.path.join(BASE_DIR, "LOG")
         os.makedirs(log_dir, exist_ok=True)
 
-        log_file = f"calc_rate_{current_date}_{current_hhmm}.log"
+        log_file = f"calc_rate_{start_date}_{start_hhmm}.log"
         return os.path.join(log_dir, log_file)
 
     def _setup_logging(self) -> None:
@@ -89,11 +88,8 @@ class Main:
             self._export_csv(summary_records)
 
             self.logger.info("Aggregate completed successfully")
-        except FileWriteError as e:
-            self.logger.error(str(e))
         except Exception as e:
-            self.logger.error(f"Unexpected failed: {e}")
-            self.logger.error(traceback.format_exc())
+            self.logger.error(f"Unexpected error: {e}", exc_info=True)
 
     def _load_config(self, config_path: str) -> Dict:
         """
@@ -103,12 +99,8 @@ class Main:
             json.JSONDecodeError: JSON形式が不正な場合
             FileNotFoundError: 設定ファイルが存在しない場合
         """
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError) as e:
-            self.logger.error(f"Failed to load config: {e}")
-            raise
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     def _collect_files(self, sftp_config: Dict) -> List[str]:
         """
@@ -127,16 +119,13 @@ class Main:
                         break
                     except CollectionError as e:
                         self.logger.warning(str(e))
-                    except Exception as e:
-                        self.logger.warning(str(e), exc_info=True)
-                        break
         return collector.collected_files
 
     def _build_receive_dir_path(self, remote_path: str) -> str:
         """
         ローカルの受信ディレクトリパスを構築する。
         """
-        base_dir = os.path.join(BASE_DIR, "INPUT", current_date, current_hhmm)
+        base_dir = os.path.join(BASE_DIR, "INPUT", start_date, start_hhmm)
         child_dir = os.path.basename(os.path.dirname(remote_path))
         return os.path.join(base_dir, child_dir)
 
@@ -151,7 +140,7 @@ class Main:
                     records = RecordReader.from_textio(f)
                     aggregator.process(records)
                 self.logger.info(f"Successfully aggregated file: {fp}")
-            except IOError as e:
+            except OSError as e:
                 self.logger.warning(f"Failed to open file {fp}: {e}")
             except ValueError as e:
                 self.logger.warning(f"Invalid format file, nocounted {fp}: {e}")
@@ -169,7 +158,7 @@ class Main:
 
         stats_path = os.path.join(
             os.path.join(BASE_DIR, "OUTPUT"),
-            f"success_rate_summary_{current_date}{current_hhmm}.csv",
+            f"success_rate_summary_{start_date}{start_hhmm}.csv",
         )
         exporter = StatisticsExporter(CSVFormatter())
         exporter.export(summary_records, stats_path)

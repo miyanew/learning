@@ -5,8 +5,6 @@ from abc import ABC, abstractmethod
 from io import StringIO
 from typing import Dict, List
 
-from exceptions import FileWriteError
-
 
 class StatisticsFormatter(ABC):
     """統計結果のフォーマッタの基底クラス"""
@@ -56,11 +54,8 @@ class StatisticsExporter:
         formatted_data = self.formatter.format(statistics)
         self._ensure_directory(output_path)
 
-        try:
-            with open(output_path, "w", encoding="utf-8") as file:
-                file.write(formatted_data)
-        except Exception as e:
-            raise FileWriteError(f"Failed to write to file: {e}")
+        with open(output_path, "w", encoding="utf-8") as file:
+            file.write(formatted_data)
 
     def _ensure_directory(self, file_path: str) -> None:
         directory = os.path.dirname(file_path)

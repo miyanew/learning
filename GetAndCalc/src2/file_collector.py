@@ -7,6 +7,12 @@ import paramiko
 from exceptions import CollectionError, SSHConfigurationError
 
 
+class Error(Exception):
+    """Base-class for all exceptions raised by this module."""
+
+    pass
+
+
 class FileCollector:
     def __init__(self, ssh_config):
         self.ssh_config = ssh_config
